@@ -5,20 +5,20 @@ export async function followPath(car, pathCells, cellSize) {
   if (followPath.running) return;
   followPath.running = true;
   car.autopilot = true;
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const send = async action => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const send = async (action) => {
     car.setKeysFromAction(action);
     try {
       await fetch(CONTROL_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ action }),
       });
     } catch (err) {
       console.error('autopilot send failed', err);
     }
   };
-  const norm = a => {
+  const norm = (a) => {
     while (a > Math.PI) a -= 2 * Math.PI;
     while (a < -Math.PI) a += 2 * Math.PI;
     return a;
@@ -62,7 +62,12 @@ export function aStar(start, goal, gameMap) {
   }
   const inBounds = (x, y) => x >= 0 && x < cols && y >= 0 && y < rows;
   const key = (x, y) => `${x},${y}`;
-  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+  const dirs = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
   const g = Array.from({ length: rows }, () => Array(cols).fill(Infinity));
   const f = Array.from({ length: rows }, () => Array(cols).fill(Infinity));
   const came = {};
@@ -96,7 +101,8 @@ export function aStar(start, goal, gameMap) {
         obstaclesSet.has(key(nx + 1, ny)) ||
         obstaclesSet.has(key(nx, ny + 1)) ||
         obstaclesSet.has(key(nx + 1, ny + 1))
-      ) continue;
+      )
+        continue;
       const tentativeG = g[current.y][current.x] + 1;
       if (tentativeG < g[ny][nx]) {
         came[key(nx, ny)] = current;

@@ -50,9 +50,9 @@ function sendTelemetry(front, rear, left, right) {
       gyro: car.gyro,
       pos_x: car.posX,
       pos_y: car.posY,
-      distances: { front, rear, left, right }
-    })
-  }).catch(err => console.error('sendTelemetry failed', err));
+      distances: { front, rear, left, right },
+    }),
+  }).catch((err) => console.error('sendTelemetry failed', err));
 }
 
 let gameMap = new GameMap(20, 15);
@@ -80,7 +80,8 @@ function respawnTarget() {
     const y = row * CELL_SIZE;
     if (!gameMap.isWithinBounds(x, y, size, size)) continue;
     const temp = new Target(x, y, size);
-    const collides = obstacles.some(o => o.intersectsRect(x, y, size, size)) ||
+    const collides =
+      obstacles.some((o) => o.intersectsRect(x, y, size, size)) ||
       temp.intersectsRect(car.posX, car.posY, car.imgWidth, car.imgHeight);
     if (!collides) {
       targetMarker = temp;
@@ -91,10 +92,12 @@ function respawnTarget() {
   }
 }
 
-
 const carImage = new Image();
 carImage.src = 'extracted_foreground.png';
-const car = new Car(ctx, carImage, 0.5, 0, obstacles, { startX: 100, startY: 100 });
+const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
+  startX: 100,
+  startY: 100,
+});
 refreshCarObjects();
 
 function resizeCanvas() {
@@ -109,12 +112,13 @@ dropdown.addEventListener('change', () => {
   previewSize = parseInt(val) || CELL_SIZE;
 });
 
-canvas.addEventListener('mousedown', e => {
+canvas.addEventListener('mousedown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
-  dragX = Math.floor((e.clientX - rect.left) * scaleX / CELL_SIZE) * CELL_SIZE;
-  dragY = Math.floor((e.clientY - rect.top) * scaleY / CELL_SIZE) * CELL_SIZE;
+  dragX =
+    Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
+  dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
   isDragging = true;
 });
 
@@ -123,17 +127,18 @@ canvas.addEventListener('mouseup', () => {
   const selected = dropdown.value;
 
   if (removeCheckbox.checked) {
-    if (targetMarker &&
-        dragX === targetMarker.x &&
-        dragY === targetMarker.y &&
-        previewSize === targetMarker.radius) {
+    if (
+      targetMarker &&
+      dragX === targetMarker.x &&
+      dragY === targetMarker.y &&
+      previewSize === targetMarker.radius
+    ) {
       targetMarker = null;
       gameMap.target = null;
     }
 
-    const i = obstacles.findIndex(o => o.x === dragX && o.y === dragY);
+    const i = obstacles.findIndex((o) => o.x === dragX && o.y === dragY);
     if (i !== -1) obstacles.splice(i, 1);
-
   } else if (selected === 'target') {
     targetMarker = new Target(dragX, dragY, previewSize);
     gameMap.target = targetMarker;
@@ -146,33 +151,34 @@ canvas.addEventListener('mouseup', () => {
   isDragging = false;
 });
 
-canvas.addEventListener('mousemove', e => {
+canvas.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
-  dragX = Math.floor((e.clientX - rect.left) * scaleX / CELL_SIZE) * CELL_SIZE;
-  dragY = Math.floor((e.clientY - rect.top) * scaleY / CELL_SIZE) * CELL_SIZE;
+  dragX =
+    Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
+  dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
 });
 
 function drawGrid() {
   ctx.strokeStyle = '#ddd';
-  for (let x=0; x<=canvas.width; x+=CELL_SIZE) {
+  for (let x = 0; x <= canvas.width; x += CELL_SIZE) {
     ctx.beginPath();
-    ctx.moveTo(x,0);
-    ctx.lineTo(x,canvas.height);
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
     ctx.stroke();
   }
-  for (let y=0; y<=canvas.height; y+=CELL_SIZE) {
+  for (let y = 0; y <= canvas.height; y += CELL_SIZE) {
     ctx.beginPath();
-    ctx.moveTo(0,y);
-    ctx.lineTo(canvas.width,y);
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
     ctx.stroke();
   }
 }
 
 function loop() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
   for (const o of obstacles) o.draw(ctx);
   if (targetMarker) {
@@ -185,28 +191,31 @@ function loop() {
     pathCells.forEach((p, i) => {
       const px = p.x * CELL_SIZE + CELL_SIZE / 2;
       const py = p.y * CELL_SIZE + CELL_SIZE / 2;
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     });
     ctx.stroke();
   }
-  if (isDragging && dropdown.value!=='target' && !removeCheckbox.checked) {
-    ctx.strokeStyle='red';
-    ctx.lineWidth=2;
+  if (isDragging && dropdown.value !== 'target' && !removeCheckbox.checked) {
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
     ctx.strokeRect(dragX, dragY, previewSize, previewSize);
   }
   car.update(canvas.width, canvas.height);
-  if (targetMarker &&
-      targetMarker.intersectsRect(car.posX, car.posY, car.imgWidth, car.imgHeight)) {
+  if (
+    targetMarker &&
+    targetMarker.intersectsRect(car.posX, car.posY, car.imgWidth, car.imgHeight)
+  ) {
     respawnTarget();
   }
 
   redEl.textContent = Math.round(car.redConeLength);
   greenEl.textContent = Math.round(car.greenConeLength);
-  const bl1 = car.drawKegel(65,7,150,-Math.PI/2,'blue',8);
-  const bl2 = car.drawKegel(72,7,150,-Math.PI/2,'blue',8);
-  const br1 = car.drawKegel(91,7,150,-Math.PI/2,'blue',8);
-  const br2 = car.drawKegel(97,7,150,-Math.PI/2,'blue',8);
-  const bb  = car.drawKegel(143,37,150,0,'blue',8);
+  const bl1 = car.drawKegel(65, 7, 150, -Math.PI / 2, 'blue', 8);
+  const bl2 = car.drawKegel(72, 7, 150, -Math.PI / 2, 'blue', 8);
+  const br1 = car.drawKegel(91, 7, 150, -Math.PI / 2, 'blue', 8);
+  const br2 = car.drawKegel(97, 7, 150, -Math.PI / 2, 'blue', 8);
+  const bb = car.drawKegel(143, 37, 150, 0, 'blue', 8);
   blueLeft1El.textContent = Math.round(bl1);
   blueLeft2El.textContent = Math.round(bl2);
   blueRight1El.textContent = Math.round(br1);
@@ -232,7 +241,7 @@ function loop() {
 function loadMapFile(e) {
   const file = e.target.files[0];
   if (!file) return;
-  db.loadMapFile(file).then(obj => {
+  db.loadMapFile(file).then((obj) => {
     gameMap = GameMap.fromJSON(obj);
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
@@ -245,9 +254,13 @@ function loadMapFile(e) {
   });
 }
 
-generateMazeBtn.addEventListener('click', () => generateMaze(gameMap, respawnTarget));
+generateMazeBtn.addEventListener('click', () =>
+  generateMaze(gameMap, respawnTarget),
+);
 
-document.getElementById('saveMap').addEventListener('click', () => db.downloadMap(gameMap));
+document
+  .getElementById('saveMap')
+  .addEventListener('click', () => db.downloadMap(gameMap));
 
 document.getElementById('saveMapDb').addEventListener('click', () => {
   let name = document.getElementById('mapName').value.trim();
@@ -255,19 +268,26 @@ document.getElementById('saveMapDb').addEventListener('click', () => {
     name = db.getDefaultMapName();
     document.getElementById('mapName').value = name;
   }
-  db.uploadMap(name, gameMap).then(res => {
-    if (res.ok) alert('Gespeichert');
-    else res.text().then(t => alert('Fehler beim Speichern:\n' + t));
-  }).catch(err => alert('Netzwerkfehler:\n' + err));
+  db.uploadMap(name, gameMap)
+    .then((res) => {
+      if (res.ok) alert('Gespeichert');
+      else res.text().then((t) => alert('Fehler beim Speichern:\n' + t));
+    })
+    .catch((err) => alert('Netzwerkfehler:\n' + err));
 });
 
-document.getElementById('loadMapBtn').addEventListener('click', () => document.getElementById('loadMap').click());
+document
+  .getElementById('loadMapBtn')
+  .addEventListener('click', () => document.getElementById('loadMap').click());
 document.getElementById('loadMap').addEventListener('change', loadMapFile);
 
 document.getElementById('loadMapDb').addEventListener('click', () => {
   const mapId = document.getElementById('mapSelect').value;
-  if (!mapId) { alert('Keine Map ausgewählt'); return; }
-  db.loadMapFromDb(mapId).then(obj => {
+  if (!mapId) {
+    alert('Keine Map ausgewählt');
+    return;
+  }
+  db.loadMapFromDb(mapId).then((obj) => {
     gameMap = GameMap.fromJSON(obj);
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
@@ -281,10 +301,10 @@ document.getElementById('loadMapDb').addEventListener('click', () => {
 });
 
 document.getElementById('fetchMaps').addEventListener('click', () => {
-  db.fetchAvailableMaps().then(data => {
+  db.fetchAvailableMaps().then((data) => {
     const select = document.getElementById('mapSelect');
     select.innerHTML = '';
-    data.forEach(m => {
+    data.forEach((m) => {
       const opt = document.createElement('option');
       opt.value = m.id;
       opt.textContent = m.name + ' (' + m.created_at + ')';
@@ -296,28 +316,44 @@ document.getElementById('fetchMaps').addEventListener('click', () => {
 document.getElementById('renameMapBtn').addEventListener('click', () => {
   const mapId = document.getElementById('mapSelect').value;
   const newName = document.getElementById('renameMapName').value.trim();
-  if (!mapId) { alert('Keine Map ausgewählt'); return; }
-  if (!newName) { alert('Neuer Name fehlt'); return; }
-  db.renameMap(mapId, newName).then(res => {
-    if (res.ok) { document.getElementById('fetchMaps').click(); alert('Umbenannt'); }
-    else res.text().then(t => alert('Fehler beim Umbenennen:\n' + t));
+  if (!mapId) {
+    alert('Keine Map ausgewählt');
+    return;
+  }
+  if (!newName) {
+    alert('Neuer Name fehlt');
+    return;
+  }
+  db.renameMap(mapId, newName).then((res) => {
+    if (res.ok) {
+      document.getElementById('fetchMaps').click();
+      alert('Umbenannt');
+    } else res.text().then((t) => alert('Fehler beim Umbenennen:\n' + t));
   });
 });
 
 document.getElementById('deleteMapBtn').addEventListener('click', () => {
   const mapId = document.getElementById('mapSelect').value;
-  if (!mapId) { alert('Keine Map ausgewählt'); return; }
+  if (!mapId) {
+    alert('Keine Map ausgewählt');
+    return;
+  }
   if (!confirm('Map löschen?')) return;
-  db.deleteMap(mapId).then(res => {
-    if (res.ok) { document.getElementById('fetchMaps').click(); alert('Gelöscht'); }
-    else res.text().then(t => alert('Fehler beim Löschen:\n' + t));
+  db.deleteMap(mapId).then((res) => {
+    if (res.ok) {
+      document.getElementById('fetchMaps').click();
+      alert('Gelöscht');
+    } else res.text().then((t) => alert('Fehler beim Löschen:\n' + t));
   });
 });
 
 document.getElementById('setSizeBtn').addEventListener('click', () => {
   const w = parseInt(document.getElementById('gridWidth').value, 10);
   const h = parseInt(document.getElementById('gridHeight').value, 10);
-  if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) { alert('Invalid size'); return; }
+  if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+    alert('Invalid size');
+    return;
+  }
   gameMap = new GameMap(w, h, CELL_SIZE);
   obstacles = gameMap.obstacles;
   targetMarker = null;
@@ -331,11 +367,11 @@ calcPathBtn.addEventListener('click', () => {
   if (!targetMarker) return;
   const start = {
     x: Math.floor((car.posX + car.imgWidth / 2) / CELL_SIZE),
-    y: Math.floor((car.posY + car.imgHeight / 2) / CELL_SIZE)
+    y: Math.floor((car.posY + car.imgHeight / 2) / CELL_SIZE),
   };
   const goal = {
     x: Math.floor(targetMarker.x / CELL_SIZE),
-    y: Math.floor(targetMarker.y / CELL_SIZE)
+    y: Math.floor(targetMarker.y / CELL_SIZE),
   };
   start.x = Math.min(start.x, gameMap.cols - 2);
   start.y = Math.min(start.y, gameMap.rows - 2);
