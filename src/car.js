@@ -76,6 +76,37 @@ export class Car {
     this.ctx.fillRect(canvasWidth - m, 0, m, canvasHeight);
   }
 
+  getBoundingBox(x, y, rotation = this.rotation) {
+    const cx = x + this.imgWidth / 2;
+    const cy = y + this.imgHeight / 2;
+    const w = this.imgWidth;
+    const h = this.imgHeight;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    const corners = [
+      [x, y],
+      [x + w, y],
+      [x, y + h],
+      [x + w, y + h],
+    ].map(([px, py]) => {
+      const dx = px - cx;
+      const dy = py - cy;
+      const rx = dx * cos - dy * sin;
+      const ry = dx * sin + dy * cos;
+      return [cx + rx, cy + ry];
+    });
+    const xs = corners.map((c) => c[0]);
+    const ys = corners.map((c) => c[1]);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    return {
+      x: minX,
+      y: minY,
+      w: Math.max(...xs) - minX,
+      h: Math.max(...ys) - minY,
+    };
+  }
+
   drawKegel(x, y, length, angle, color, baseWidth) {
     x *= this.scale;
     y *= this.scale;
@@ -228,6 +259,8 @@ export class Car {
 
     const nx = this.posX + Math.cos(this.rotation) * this.velocity;
     const ny = this.posY + Math.sin(this.rotation) * this.velocity;
+    const newRotation = this.rotation + this.angularVelocity;
+    const bbox = this.getBoundingBox(nx, ny, newRotation);
 
     const inBounds =
       nx >= this.margin &&
@@ -237,12 +270,12 @@ export class Car {
 
     if (inBounds) {
       const hit = this.objects.some((obs) =>
-        obs.intersectsRect(nx, ny, this.imgWidth, this.imgHeight),
+        obs.intersectsRect(bbox.x, bbox.y, bbox.w, bbox.h),
       );
       if (!hit) {
         this.posX = nx;
         this.posY = ny;
-        this.rotation += this.angularVelocity;
+        this.rotation = newRotation;
       } else {
         this.velocity =
           this.acceleration =
