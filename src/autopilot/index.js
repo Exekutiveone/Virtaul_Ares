@@ -6,17 +6,14 @@ export async function followPath(car, pathCells, cellSize) {
   followPath.running = true;
   car.autopilot = true;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const send = async (action) => {
+  const send = (action) => {
     car.setKeysFromAction(action);
-    try {
-      await fetch(CONTROL_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      });
-    } catch (err) {
-      console.error('autopilot send failed', err);
-    }
+    // Fire and forget to avoid blocking if the backend is unreachable
+    fetch(CONTROL_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    }).catch((err) => console.error('autopilot send failed', err));
   };
   const norm = (a) => {
     while (a > Math.PI) a -= 2 * Math.PI;
