@@ -13,6 +13,7 @@ const dropdown = document.getElementById('obstacleSize');
 const removeCheckbox = document.getElementById('removeMode');
 const generateMazeBtn = document.getElementById('generateMaze');
 const calcPathBtn = document.getElementById('calcPathBtn');
+const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
 const redEl = document.getElementById('redLength');
 const greenEl = document.getElementById('greenLength');
 const blueLeft1El = document.getElementById('blueLeft1');
@@ -59,6 +60,7 @@ let gameMap = new GameMap(20, 15);
 let CELL_SIZE = gameMap.cellSize;
 let obstacles = gameMap.obstacles;
 let previewSize = parseInt(dropdown.value);
+let showHitboxes = false;
 let isDragging = false;
 let dragX = 0;
 let dragY = 0;
@@ -180,7 +182,10 @@ function drawGrid() {
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
-  for (const o of obstacles) o.draw(ctx);
+  for (const o of obstacles) {
+    o.draw(ctx);
+    if (showHitboxes && typeof o.drawHitbox === 'function') o.drawHitbox(ctx);
+  }
   if (targetMarker) {
     targetMarker.draw(ctx);
   }
@@ -201,6 +206,7 @@ function loop() {
     ctx.lineWidth = 2;
     ctx.strokeRect(dragX, dragY, previewSize, previewSize);
   }
+  car.showHitbox = showHitboxes;
   car.update(canvas.width, canvas.height);
   if (
     targetMarker &&
@@ -379,6 +385,14 @@ calcPathBtn.addEventListener('click', () => {
   goal.y = Math.min(goal.y, gameMap.rows - 2);
   pathCells = aStar(start, goal, gameMap);
   followPath(car, pathCells, CELL_SIZE);
+});
+
+toggleHitboxesBtn.addEventListener('click', () => {
+  showHitboxes = !showHitboxes;
+  car.showHitbox = showHitboxes;
+  toggleHitboxesBtn.textContent = showHitboxes
+    ? 'Hitboxen verstecken'
+    : 'Hitboxen anzeigen';
 });
 
 carImage.onload = () => {

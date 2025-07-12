@@ -15,6 +15,12 @@ export class Obstacle {
     ctx.fillRect(this.x, this.y, this.size, this.size);
   }
 
+  drawHitbox(ctx) {
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(this.x, this.y, this.size, this.size);
+  }
+
   intersectsRect(x, y, w, h) {
     return !(
       x + w < this.x ||

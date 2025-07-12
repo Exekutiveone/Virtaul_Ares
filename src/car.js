@@ -13,6 +13,8 @@ export class Car {
     this.margin = margin;
     this.objects = objects;
 
+    this.showHitbox = false;
+
     this.imgWidth = 150 * scale;
     this.imgHeight = 80 * scale;
 
@@ -196,6 +198,7 @@ export class Car {
     this.ctx.drawImage(this.bg, 0, 0, this.imgWidth, this.imgHeight);
     this.ctx.restore();
 
+    if (this.showHitbox) this.drawHitbox();
     this.drawHitbox();
 
     for (const o of this.objects) {
