@@ -79,23 +79,17 @@ export class Car {
   }
 
   getRotatedCorners(x, y, rotation = this.rotation) {
-  getBoundingBox(x, y, rotation = this.rotation) {
     const cx = x + this.imgWidth / 2;
     const cy = y + this.imgHeight / 2;
     const w = this.imgWidth;
     const h = this.imgHeight;
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
-    return [
-      [x, y],
-      [x + w, y],
-      [x + w, y + h],
-      [x, y + h],
     const corners = [
       [x, y],
       [x + w, y],
-      [x, y + h],
       [x + w, y + h],
+      [x, y + h],
     ].map(([px, py]) => {
       const dx = px - cx;
       const dy = py - cy;
@@ -103,6 +97,7 @@ export class Car {
       const ry = dx * sin + dy * cos;
       return [cx + rx, cy + ry];
     });
+    return corners;
   }
 
   getBoundingBox(x, y, rotation = this.rotation) {
