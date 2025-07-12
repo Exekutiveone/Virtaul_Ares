@@ -1,3 +1,5 @@
+import { CONTROL_API_URL } from './config.js';
+
 export async function followPath(car, pathCells, cellSize) {
   if (!car || !Array.isArray(pathCells) || pathCells.length < 2) return;
   if (followPath.running) return;
@@ -7,7 +9,7 @@ export async function followPath(car, pathCells, cellSize) {
   const send = async action => {
     car.setKeysFromAction(action);
     try {
-      await fetch('http://localhost:5002/api/control', {
+      await fetch(CONTROL_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
