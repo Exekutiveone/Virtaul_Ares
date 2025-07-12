@@ -1,4 +1,4 @@
-import { CONTROL_API_URL } from './config.js';
+import { CONTROL_API_URL } from '../config.js';
 
 export async function followPath(car, pathCells, cellSize) {
   if (!car || !Array.isArray(pathCells) || pathCells.length < 2) return;

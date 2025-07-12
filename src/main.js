@@ -4,7 +4,7 @@ import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
 import { generateMaze, generateBorder } from './mapGenerator.js';
 import * as db from './db.js';
-import { followPath, aStar } from './autopilot.js';
+import { followPath, aStar } from './autopilot/index.js';
 import { CONTROL_API_URL, TELEMETRY_API_URL } from './config.js';
 
 const canvas = document.getElementById('canvas');
