@@ -14,6 +14,9 @@ const removeCheckbox = document.getElementById('removeMode');
 const generateMazeBtn = document.getElementById('generateMaze');
 const calcPathBtn = document.getElementById('calcPathBtn');
 const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
+const saveMapCsvBtn = document.getElementById('saveMapCsv');
+const loadMapCsvInput = document.getElementById('loadMapCsv');
+const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
 const redEl = document.getElementById('redLength');
 const greenEl = document.getElementById('greenLength');
 const blueLeft1El = document.getElementById('blueLeft1');
@@ -57,6 +60,21 @@ function sendTelemetry(front, rear, left, right) {
 }
 
 let gameMap = new GameMap(20, 15);
+const params = new URLSearchParams(window.location.search);
+const csvMapUrl = params.get('map');
+if (csvMapUrl) {
+  db.loadMapCsvUrl(csvMapUrl).then((gm) => {
+    gameMap = gm;
+    CELL_SIZE = gameMap.cellSize;
+    obstacles = gameMap.obstacles;
+    targetMarker = gameMap.target;
+    refreshCarObjects();
+    pathCells = [];
+    document.getElementById('gridWidth').value = gameMap.cols;
+    document.getElementById('gridHeight').value = gameMap.rows;
+    resizeCanvas();
+  });
+}
 let CELL_SIZE = gameMap.cellSize;
 let obstacles = gameMap.obstacles;
 let previewSize = parseInt(dropdown.value);
@@ -260,6 +278,22 @@ function loadMapFile(e) {
   });
 }
 
+function loadMapCsv(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  db.loadMapCsvFile(file).then((gm) => {
+    gameMap = gm;
+    CELL_SIZE = gameMap.cellSize;
+    obstacles = gameMap.obstacles;
+    targetMarker = gameMap.target;
+    refreshCarObjects();
+    pathCells = [];
+    document.getElementById('gridWidth').value = gameMap.cols;
+    document.getElementById('gridHeight').value = gameMap.rows;
+    resizeCanvas();
+  });
+}
+
 generateMazeBtn.addEventListener('click', () =>
   generateMaze(gameMap, respawnTarget),
 );
@@ -286,6 +320,9 @@ document
   .getElementById('loadMapBtn')
   .addEventListener('click', () => document.getElementById('loadMap').click());
 document.getElementById('loadMap').addEventListener('change', loadMapFile);
+loadMapCsvBtn.addEventListener('click', () => loadMapCsvInput.click());
+saveMapCsvBtn.addEventListener('click', () => db.downloadMapCsv(gameMap));
+loadMapCsvInput.addEventListener('change', loadMapCsv);
 
 document.getElementById('loadMapDb').addEventListener('click', () => {
   const mapId = document.getElementById('mapSelect').value;

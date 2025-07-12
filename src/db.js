@@ -74,3 +74,37 @@ export function loadMapFile(file) {
     reader.readAsText(file);
   });
 }
+
+// CSV helpers
+import { parseCsvMap, serializeCsvMap } from './csvMap.js';
+
+export function downloadMapCsv(gameMap, name = 'map.csv') {
+  const data = serializeCsvMap(gameMap);
+  const blob = new Blob([data], { type: 'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+}
+
+export async function loadMapCsvUrl(url) {
+  const res = await fetch(url);
+  const text = await res.text();
+  return parseCsvMap(text);
+}
+
+export function loadMapCsvFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const gm = parseCsvMap(reader.result);
+        resolve(gm);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}

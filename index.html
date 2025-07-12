@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Virtual Ares - Map Auswahl</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    #controls {
+      display: flex;
+      gap: 10px;
+    }
+    select, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Map Auswahl</h1>
+  <div id="controls">
+    <select id="mapList"></select>
+    <button id="startBtn">Start</button>
+    <button id="editBtn">Map Editor</button>
+  </div>
+  <script type="module">
+    async function loadList() {
+      const res = await fetch('./maps/list.json');
+      const names = await res.json();
+      const select = document.getElementById('mapList');
+      names.forEach((n) => {
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n;
+        select.appendChild(opt);
+      });
+    }
+    loadList();
+    document.getElementById('startBtn').addEventListener('click', () => {
+      const map = document.getElementById('mapList').value;
+      if (map) window.location.href = 'map2.html?map=maps/' + encodeURIComponent(map);
+    });
+    document.getElementById('editBtn').addEventListener('click', () => {
+      const map = document.getElementById('mapList').value;
+      const url = map
+        ? 'map2.html?map=maps/' + encodeURIComponent(map) + '&editor=1'
+        : 'map2.html?editor=1';
+      window.location.href = url;
+    });
+  </script>
+</body>
+</html>
