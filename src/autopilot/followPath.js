@@ -23,7 +23,9 @@ export async function followPath(car, pathCells, cellSize) {
       let diff = norm(angle - car.rotation);
       while (Math.abs(diff) > 0.1) {
         await sendAction(car, diff > 0 ? 'right' : 'left');
-        await sleep(100);
+        await sleep(50);
+        await sendAction(car, 'stop');
+        await sleep(50);
         angle = Math.atan2(
           targetY - (car.posY + car.imgHeight / 2),
           targetX - (car.posX + car.imgWidth / 2),
@@ -37,7 +39,9 @@ export async function followPath(car, pathCells, cellSize) {
       );
       while (dist > cellSize / 2) {
         await sendAction(car, 'forward');
-        await sleep(100);
+        await sleep(50);
+        await sendAction(car, 'stop');
+        await sleep(50);
         dist = Math.hypot(
           targetX - (car.posX + car.imgWidth / 2),
           targetY - (car.posY + car.imgHeight / 2),
