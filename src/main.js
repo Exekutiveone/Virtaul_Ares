@@ -5,6 +5,7 @@ import { Target } from './Target.js';
 import { generateMaze, generateBorder } from './mapGenerator.js';
 import * as db from './db.js';
 import { followPath, aStar } from './autopilot.js';
+import { CONTROL_API_URL, TELEMETRY_API_URL } from './config.js';
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -30,7 +31,7 @@ const CONTROL_POLL_INTERVAL = 200; // ms
 
 async function pollControl() {
   try {
-    const res = await fetch('http://localhost:5002/api/control');
+    const res = await fetch(CONTROL_API_URL);
     if (!res.ok) return;
     const data = await res.json();
     if (data.action) car.setKeysFromAction(data.action);
@@ -40,7 +41,7 @@ async function pollControl() {
 }
 
 function sendTelemetry(front, rear, left, right) {
-  fetch('http://127.0.0.1:5001/api/car', {
+  fetch(TELEMETRY_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
