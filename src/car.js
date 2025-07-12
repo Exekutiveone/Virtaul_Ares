@@ -194,7 +194,6 @@ export class Car {
     this.ctx.restore();
 
     if (this.showHitbox) this.drawHitbox();
-    this.drawHitbox();
 
     for (const o of this.objects) {
       if (typeof o.draw === 'function') {
