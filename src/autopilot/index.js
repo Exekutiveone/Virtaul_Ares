@@ -22,22 +22,34 @@ export async function followPath(car, pathCells, cellSize) {
   };
   for (let i = 0; i < pathCells.length - 1; i++) {
     const next = pathCells[i + 1];
-    const targetX = next.x * cellSize;
-    const targetY = next.y * cellSize;
-    let angle = Math.atan2(targetY - car.posY, targetX - car.posX);
+    const targetX = next.x * cellSize + cellSize / 2;
+    const targetY = next.y * cellSize + cellSize / 2;
+    let angle = Math.atan2(
+      targetY - (car.posY + car.imgHeight / 2),
+      targetX - (car.posX + car.imgWidth / 2),
+    );
     let diff = norm(angle - car.rotation);
     while (Math.abs(diff) > 0.1) {
       await send(diff > 0 ? 'right' : 'left');
       await sleep(100);
-      angle = Math.atan2(targetY - car.posY, targetX - car.posX);
+      angle = Math.atan2(
+        targetY - (car.posY + car.imgHeight / 2),
+        targetX - (car.posX + car.imgWidth / 2),
+      );
       diff = norm(angle - car.rotation);
     }
     await send('stop');
-    let dist = Math.hypot(targetX - car.posX, targetY - car.posY);
+    let dist = Math.hypot(
+      targetX - (car.posX + car.imgWidth / 2),
+      targetY - (car.posY + car.imgHeight / 2),
+    );
     while (dist > cellSize / 2) {
       await send('forward');
       await sleep(100);
-      dist = Math.hypot(targetX - car.posX, targetY - car.posY);
+      dist = Math.hypot(
+        targetX - (car.posX + car.imgWidth / 2),
+        targetY - (car.posY + car.imgHeight / 2),
+      );
     }
     await send('stop');
   }
