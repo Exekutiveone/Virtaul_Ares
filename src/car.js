@@ -76,18 +76,18 @@ export class Car {
     this.ctx.fillRect(canvasWidth - m, 0, m, canvasHeight);
   }
 
-  getBoundingBox(x, y, rotation = this.rotation) {
+  getRotatedCorners(x, y, rotation = this.rotation) {
     const cx = x + this.imgWidth / 2;
     const cy = y + this.imgHeight / 2;
     const w = this.imgWidth;
     const h = this.imgHeight;
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
-    const corners = [
+    return [
       [x, y],
       [x + w, y],
-      [x, y + h],
       [x + w, y + h],
+      [x, y + h],
     ].map(([px, py]) => {
       const dx = px - cx;
       const dy = py - cy;
@@ -95,6 +95,10 @@ export class Car {
       const ry = dx * sin + dy * cos;
       return [cx + rx, cy + ry];
     });
+  }
+
+  getBoundingBox(x, y, rotation = this.rotation) {
+    const corners = this.getRotatedCorners(x, y, rotation);
     const xs = corners.map((c) => c[0]);
     const ys = corners.map((c) => c[1]);
     const minX = Math.min(...xs);
@@ -105,6 +109,16 @@ export class Car {
       w: Math.max(...xs) - minX,
       h: Math.max(...ys) - minY,
     };
+  }
+
+  drawHitbox() {
+    const corners = this.getRotatedCorners(this.posX, this.posY);
+    this.ctx.strokeStyle = 'red';
+    this.ctx.beginPath();
+    this.ctx.moveTo(corners[0][0], corners[0][1]);
+    for (const [x, y] of corners.slice(1)) this.ctx.lineTo(x, y);
+    this.ctx.closePath();
+    this.ctx.stroke();
   }
 
   drawKegel(x, y, length, angle, color, baseWidth) {
@@ -175,6 +189,8 @@ export class Car {
     this.ctx.translate(-this.imgWidth / 2, -this.imgHeight / 2);
     this.ctx.drawImage(this.bg, 0, 0, this.imgWidth, this.imgHeight);
     this.ctx.restore();
+
+    this.drawHitbox();
 
     for (const o of this.objects) {
       if (typeof o.draw === 'function') {
