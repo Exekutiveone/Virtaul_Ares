@@ -24,6 +24,15 @@ const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
 const loadMapCsvInput = document.getElementById('loadMapCsv');
 const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
+const controlModeSelect = document.getElementById('controlMode');
+let controlMode = controlModeSelect ? controlModeSelect.value : 'wasd';
+let mouseTarget = null;
+const keyMap = {
+  w: 'ArrowUp',
+  a: 'ArrowLeft',
+  s: 'ArrowDown',
+  d: 'ArrowRight',
+};
 const redEl = document.getElementById('redLength');
 const greenEl = document.getElementById('greenLength');
 const blueLeft1El = document.getElementById('blueLeft1');
@@ -37,6 +46,31 @@ const gyroEl = document.getElementById('gyro');
 const cellCmInput = document.getElementById('gridCellCm');
 const widthCmInput = document.getElementById('gridWidth');
 const heightCmInput = document.getElementById('gridHeight');
+
+if (controlModeSelect) {
+  controlModeSelect.addEventListener('change', () => {
+    controlMode = controlModeSelect.value;
+    car.autopilot = controlMode === 'mouse';
+  });
+}
+
+window.addEventListener('keydown', (e) => {
+  if (controlMode !== 'wasd') return;
+  const k = keyMap[e.key.toLowerCase()];
+  if (k) {
+    e.preventDefault();
+    car.keys[k] = true;
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (controlMode !== 'wasd') return;
+  const k = keyMap[e.key.toLowerCase()];
+  if (k) {
+    e.preventDefault();
+    car.keys[k] = false;
+  }
+});
 
 let zoomMode = false;
 let zoomScale = 1;
@@ -103,7 +137,9 @@ if (!editorMode) {
 }
 if (csvMapUrl) {
   if (csvMapUrl.startsWith('/static/maps/')) {
-    currentCsvFile = decodeURIComponent(csvMapUrl.substring('/static/maps/'.length));
+    currentCsvFile = decodeURIComponent(
+      csvMapUrl.substring('/static/maps/'.length),
+    );
     const nameInput = document.getElementById('mapName');
     if (nameInput && !nameInput.value) nameInput.value = currentCsvFile;
   }
@@ -173,6 +209,7 @@ const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
   hitboxWidth: HOTBOX_WIDTH_CM / CM_PER_PX,
   hitboxHeight: HOTBOX_HEIGHT_CM / CM_PER_PX,
 });
+car.autopilot = controlMode === 'mouse';
 refreshCarObjects();
 
 function updateObstacleOptions() {
@@ -291,6 +328,17 @@ canvas.addEventListener('mousemove', (e) => {
   }
 });
 
+canvas.addEventListener('mousemove', (e) => {
+  if (controlMode !== 'mouse') return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  mouseTarget = {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY,
+  };
+});
+
 canvas.addEventListener('wheel', (e) => {
   if (!zoomMode) return;
   e.preventDefault();
@@ -298,6 +346,29 @@ canvas.addEventListener('wheel', (e) => {
   zoomScale = Math.max(0.5, Math.min(5, zoomScale * factor));
   updateTransform();
 });
+
+function updateMouseFollow() {
+  if (!mouseTarget) return;
+  const cx = car.posX + car.imgWidth / 2;
+  const cy = car.posY + car.imgHeight / 2;
+  const angle = Math.atan2(mouseTarget.y - cy, mouseTarget.x - cx);
+  let diff = angle - car.rotation;
+  while (diff > Math.PI) diff -= 2 * Math.PI;
+  while (diff < -Math.PI) diff += 2 * Math.PI;
+  for (const k of Object.keys(car.keys)) car.keys[k] = false;
+  const dist = Math.hypot(mouseTarget.x - cx, mouseTarget.y - cy);
+  if (Math.abs(diff) > 0.1) {
+    car.keys[diff > 0 ? 'ArrowRight' : 'ArrowLeft'] = true;
+  } else if (dist > 10) {
+    car.keys.ArrowUp = true;
+  } else {
+    // Stop immediately when close enough to the target
+    car.velocity = 0;
+    car.angularVelocity = 0;
+    car.acceleration = 0;
+    car.angularAcceleration = 0;
+  }
+}
 
 function drawGrid() {
   ctx.strokeStyle = '#ddd';
@@ -317,6 +388,7 @@ function drawGrid() {
 
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (controlMode === 'mouse') updateMouseFollow();
   drawGrid();
   for (const o of obstacles) {
     o.draw(ctx);
