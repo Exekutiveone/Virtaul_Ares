@@ -1,12 +1,12 @@
 
 from flask import Flask, request, jsonify, render_template
 from uuid import uuid4
+from datetime import datetime
+from werkzeug.utils import secure_filename
+import os
+import json
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-from flask import Flask, request, jsonify
-from uuid import uuid4
-
-app = Flask(__name__)
 
 # In-memory storage for maps and telemetry
 maps = {}
@@ -22,6 +22,52 @@ def index():
 @app.route('/map2')
 def map2_page():
     return render_template('map2.html')
+
+
+# CSV map storage
+CSV_MAPS_FOLDER = os.path.join(app.static_folder, 'maps')
+CSV_LIST_FILE = os.path.join(CSV_MAPS_FOLDER, 'list.json')
+
+
+def load_csv_map_list():
+    if os.path.exists(CSV_LIST_FILE):
+        with open(CSV_LIST_FILE) as f:
+            return json.load(f)
+    return []
+
+
+def save_csv_map_list(data):
+    with open(CSV_LIST_FILE, 'w') as f:
+        json.dump(data, f)
+
+
+@app.route('/api/csv-maps', methods=['GET', 'POST'])
+def csv_maps():
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        name = data.get('name')
+        csv_data = data.get('csv')
+        creator = data.get('creator', 'Unknown')
+        if not name or not csv_data:
+            return jsonify({'error': 'missing name or csv'}), 400
+        filename = secure_filename(name)
+        if not filename.endswith('.csv'):
+            filename += '.csv'
+        os.makedirs(CSV_MAPS_FOLDER, exist_ok=True)
+        with open(os.path.join(CSV_MAPS_FOLDER, filename), 'w') as f:
+            f.write(csv_data)
+        maps_list = load_csv_map_list()
+        maps_list.append({
+            'file': filename,
+            'name': name,
+            'created': datetime.utcnow().isoformat(),
+            'creator': creator,
+        })
+        save_csv_map_list(maps_list)
+        return jsonify({'file': filename}), 201
+    else:
+        maps_list = load_csv_map_list()
+        return jsonify(maps_list)
 
 
 @app.route('/api/maps', methods=['GET', 'POST'])

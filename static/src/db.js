@@ -77,6 +77,7 @@ export function loadMapFile(file) {
 
 // CSV helpers
 import { parseCsvMap, serializeCsvMap } from './csvMap.js';
+export { serializeCsvMap };
 
 export function downloadMapCsv(gameMap, name = 'map.csv') {
   const data = serializeCsvMap(gameMap);
@@ -85,6 +86,14 @@ export function downloadMapCsv(gameMap, name = 'map.csv') {
   link.href = URL.createObjectURL(blob);
   link.download = name;
   link.click();
+}
+
+export function uploadCsvMap(name, csvData, creator = 'Unknown') {
+  return fetch('/api/csv-maps', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, csv: csvData, creator }),
+  });
 }
 
 export async function loadMapCsvUrl(url) {
