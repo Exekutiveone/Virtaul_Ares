@@ -34,7 +34,7 @@
   </div>
   <script type="module">
     async function loadList() {
-      const res = await fetch('./maps/list.json');
+      const res = await fetch('/static/maps/list.json');
       const names = await res.json();
       const select = document.getElementById('mapList');
       names.forEach((n) => {
@@ -47,13 +47,13 @@
     loadList();
     document.getElementById('startBtn').addEventListener('click', () => {
       const map = document.getElementById('mapList').value;
-      if (map) window.location.href = 'map2.html?map=maps/' + encodeURIComponent(map);
+      if (map) window.location.href = '/map2?map=/static/maps/' + encodeURIComponent(map);
     });
     document.getElementById('editBtn').addEventListener('click', () => {
       const map = document.getElementById('mapList').value;
       const url = map
-        ? 'map2.html?map=maps/' + encodeURIComponent(map) + '&editor=1'
-        : 'map2.html?editor=1';
+        ? '/map2?map=/static/maps/' + encodeURIComponent(map) + '&editor=1'
+        : '/map2?editor=1';
       window.location.href = url;
     });
   </script>
