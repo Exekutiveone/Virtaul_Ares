@@ -17,6 +17,8 @@ const removeCheckbox = document.getElementById('removeMode');
 const generateMazeBtn = document.getElementById('generateMaze');
 const calcPathBtn = document.getElementById('calcPathBtn');
 const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
+const findCarBtn = document.getElementById('findCarBtn');
+const canvasContainer = document.getElementById('canvasContainer');
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const loadMapCsvInput = document.getElementById('loadMapCsv');
 const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
@@ -33,6 +35,14 @@ const gyroEl = document.getElementById('gyro');
 const cellCmInput = document.getElementById('gridCellCm');
 const widthCmInput = document.getElementById('gridWidth');
 const heightCmInput = document.getElementById('gridHeight');
+
+let zoomMode = false;
+let zoomScale = 1;
+let translateX = 0;
+let translateY = 0;
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
 
 const TELEMETRY_INTERVAL = 500; // ms
 let lastTelemetry = 0;
@@ -153,6 +163,11 @@ function updateObstacleOptions() {
 function resizeCanvas() {
   canvas.width = gameMap.cols * CELL_SIZE;
   canvas.height = gameMap.rows * CELL_SIZE;
+  updateTransform();
+}
+
+function updateTransform() {
+  canvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
 }
 
 window.addEventListener('resize', resizeCanvas);
@@ -163,6 +178,12 @@ dropdown.addEventListener('change', () => {
 });
 
 canvas.addEventListener('mousedown', (e) => {
+  if (zoomMode) {
+    isPanning = true;
+    panStartX = e.clientX + translateX;
+    panStartY = e.clientY + translateY;
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
@@ -173,6 +194,10 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mouseup', () => {
+  if (zoomMode) {
+    isPanning = false;
+    return;
+  }
   if (!isDragging) return;
   const selected = dropdown.value;
 
@@ -202,6 +227,12 @@ canvas.addEventListener('mouseup', () => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
+  if (zoomMode && isPanning) {
+    translateX = panStartX - e.clientX;
+    translateY = panStartY - e.clientY;
+    updateTransform();
+    return;
+  }
   if (!isDragging) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
@@ -209,6 +240,14 @@ canvas.addEventListener('mousemove', (e) => {
   dragX =
     Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
   dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
+});
+
+canvas.addEventListener('wheel', (e) => {
+  if (!zoomMode) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  zoomScale = Math.max(0.5, Math.min(5, zoomScale * factor));
+  updateTransform();
 });
 
 function drawGrid() {
@@ -475,6 +514,25 @@ toggleHitboxesBtn.addEventListener('click', () => {
     ? 'Hitboxen verstecken'
     : 'Hitboxen anzeigen';
 });
+
+function centerOnCar(radiusCm = 500) {
+  const diameterPx = (radiusCm * 2) / CM_PER_PX;
+  const cw = canvasContainer.clientWidth;
+  const ch = canvasContainer.clientHeight;
+  zoomScale = Math.min(cw / diameterPx, ch / diameterPx);
+  const viewW = cw / zoomScale;
+  const viewH = ch / zoomScale;
+  const carX = car.posX + car.imgWidth / 2;
+  const carY = car.posY + car.imgHeight / 2;
+  translateX = carX - viewW / 2;
+  translateY = carY - viewH / 2;
+  translateX = Math.max(0, Math.min(translateX, canvas.width - viewW));
+  translateY = Math.max(0, Math.min(translateY, canvas.height - viewH));
+  zoomMode = true;
+  updateTransform();
+}
+
+findCarBtn.addEventListener('click', () => centerOnCar(500));
 
 carImage.onload = () => {
   resizeCanvas();

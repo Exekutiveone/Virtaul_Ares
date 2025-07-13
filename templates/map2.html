@@ -42,10 +42,15 @@
     .cone-display {
       font-size: 16px;
     }
-    canvas {
+    #canvasContainer {
       flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    canvas {
       display: block;
       background: #fff;
+      transform-origin: top left;
     }
   </style>
 </head>
@@ -76,11 +81,11 @@
     <div class="cone-display">Drehzahl: <span id="rpm">0</span> RPM</div>
     <div class="cone-display">Gyro: <span id="gyro">0</span>°</div>
     <label>Size (cm):
-      <input id="gridWidth" type="number" value="200" min="1" style="width:60px"> x
-      <input id="gridHeight" type="number" value="150" min="1" style="width:60px">
+      <input id="gridWidth" type="number" value="6400" min="1" style="width:60px"> x
+      <input id="gridHeight" type="number" value="4800" min="1" style="width:60px">
     </label>
     <label>Quadrat (cm):
-      <input id="gridCellCm" type="number" value="10" min="1" max="25" style="width:60px">
+      <input id="gridCellCm" type="number" value="5" min="1" max="25" style="width:60px">
     </label>
     <button id="setSizeBtn">Set Size</button>
     <input type="text" id="mapName" placeholder="Map name">
@@ -98,9 +103,12 @@
     <input type="file" id="loadMapCsv" style="display:none" accept="text/csv" />
     <button id="calcPathBtn">Optimal Pathfinder</button>
     <button id="toggleHitboxes">Hitboxen anzeigen</button>
+    <button id="findCarBtn">Auto finden</button>
     <input type="file" id="loadMap" style="display:none" accept="application/json">
   </div>
-  <canvas id="canvas"></canvas>
+  <div id="canvasContainer">
+    <canvas id="canvas"></canvas>
+  </div>
   <script type="module" src="{{ url_for('static', filename='src/main.js') }}"></script>
 
 </body>
