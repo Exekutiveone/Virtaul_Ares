@@ -28,36 +28,6 @@ export function downloadMap(gameMap) {
   link.click();
 }
 
-export function uploadMap(name, gameMap) {
-  const data = getCurrentMapData(gameMap);
-  return fetch('http://127.0.0.1:5000/api/maps', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, map: data }),
-  });
-}
-
-export async function fetchAvailableMaps() {
-  const res = await fetch('http://127.0.0.1:5000/api/maps');
-  return res.json();
-}
-
-export async function loadMapFromDb(mapId) {
-  const res = await fetch(`http://127.0.0.1:5000/api/maps/${mapId}`);
-  return res.json();
-}
-
-export function renameMap(mapId, newName) {
-  return fetch(`http://127.0.0.1:5000/api/maps/${mapId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: newName }),
-  });
-}
-
-export function deleteMap(mapId) {
-  return fetch(`http://127.0.0.1:5000/api/maps/${mapId}`, { method: 'DELETE' });
-}
 
 export function loadMapFile(file) {
   return new Promise((resolve, reject) => {

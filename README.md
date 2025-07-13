@@ -11,7 +11,6 @@ python server.py
 ```
 
 Then open `http://127.0.0.1:5000/` in your browser. The Flask server exposes the following services:
-- `http://127.0.0.1:5000/api/maps` for storing and retrieving maps.
 - `http://127.0.0.1:5000/api/car` for telemetry data from the simulator.
 - `http://127.0.0.1:5000/api/control` for remote control commands.
    Then navigate to `http://localhost:8000/map2.html`.
@@ -22,13 +21,15 @@ Then open `http://127.0.0.1:5000/` in your browser. The Flask server exposes the
    python server.py
    ```
 
-   This exposes the following services:
-   - `http://127.0.0.1:5000/api/maps` for storing and retrieving maps.
-   - `http://127.0.0.1:5001/api/car` for telemetry data from the simulator.
-   - `http://localhost:5002/api/control` for remote control commands.
+    This exposes the following services:
+    - `http://127.0.0.1:5001/api/car` for telemetry data from the simulator.
+    - `http://localhost:5002/api/control` for remote control commands.
 
 Without these servers the related features of the HTML page will not work.
 
 ## Saving and loading maps
 
-The control panel of `map2.html` contains buttons for working with maps. Maps can be downloaded as a JSON file ("Save Map" / "Load Map") or saved to the map API ("Save Map" and "Karte laden"). Use "Fetch Maps" to list all maps stored on the server. They can then be renamed or deleted using the respective buttons.
+The control panel of `map2.html` contains buttons for working with maps. Maps
+can be saved and loaded locally as JSON or CSV files. The previous server based
+database for storing maps has been removed, so all map management now happens
+through file download and upload only.

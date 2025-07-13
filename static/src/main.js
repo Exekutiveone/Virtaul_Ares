@@ -389,19 +389,7 @@ if (editorMode) {
     .getElementById('saveMap')
     .addEventListener('click', () => db.downloadMap(gameMap));
 
-  document.getElementById('saveMapDb').addEventListener('click', () => {
-    let name = document.getElementById('mapName').value.trim();
-    if (!name) {
-      name = db.getDefaultMapName();
-      document.getElementById('mapName').value = name;
-    }
-    db.uploadMap(name, gameMap)
-      .then((res) => {
-        if (res.ok) alert('Gespeichert');
-        else res.text().then((t) => alert('Fehler beim Speichern:\n' + t));
-      })
-      .catch((err) => alert('Netzwerkfehler:\n' + err));
-  });
+
 
   document
     .getElementById('loadMapBtn')
@@ -421,71 +409,6 @@ if (editorMode) {
   });
   loadMapCsvInput.addEventListener('change', loadMapCsv);
 
-  document.getElementById('loadMapDb').addEventListener('click', () => {
-    const mapId = document.getElementById('mapSelect').value;
-    if (!mapId) {
-      alert('Keine Map ausgewählt');
-      return;
-    }
-    db.loadMapFromDb(mapId).then((obj) => {
-      gameMap = GameMap.fromJSON(obj);
-      CELL_SIZE = gameMap.cellSize;
-      obstacles = gameMap.obstacles;
-      targetMarker = gameMap.target;
-      refreshCarObjects();
-      pathCells = [];
-      widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
-      heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
-      resizeCanvas();
-    });
-  });
-
-  document.getElementById('fetchMaps').addEventListener('click', () => {
-    db.fetchAvailableMaps().then((data) => {
-      const select = document.getElementById('mapSelect');
-      select.innerHTML = '';
-      data.forEach((m) => {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.textContent = m.name + ' (' + m.created_at + ')';
-        select.appendChild(opt);
-      });
-    });
-  });
-
-  document.getElementById('renameMapBtn').addEventListener('click', () => {
-    const mapId = document.getElementById('mapSelect').value;
-    const newName = document.getElementById('renameMapName').value.trim();
-    if (!mapId) {
-      alert('Keine Map ausgewählt');
-      return;
-    }
-    if (!newName) {
-      alert('Neuer Name fehlt');
-      return;
-    }
-    db.renameMap(mapId, newName).then((res) => {
-      if (res.ok) {
-        document.getElementById('fetchMaps').click();
-        alert('Umbenannt');
-      } else res.text().then((t) => alert('Fehler beim Umbenennen:\n' + t));
-    });
-  });
-
-  document.getElementById('deleteMapBtn').addEventListener('click', () => {
-    const mapId = document.getElementById('mapSelect').value;
-    if (!mapId) {
-      alert('Keine Map ausgewählt');
-      return;
-    }
-    if (!confirm('Map löschen?')) return;
-    db.deleteMap(mapId).then((res) => {
-      if (res.ok) {
-        document.getElementById('fetchMaps').click();
-        alert('Gelöscht');
-      } else res.text().then((t) => alert('Fehler beim Löschen:\n' + t));
-    });
-  });
 
   document.getElementById('setSizeBtn').addEventListener('click', () => {
   const wCm = parseFloat(widthCmInput.value);
@@ -559,7 +482,6 @@ findCarBtn.addEventListener('click', () => centerOnCar(500));
 
 carImage.onload = () => {
   resizeCanvas();
-  document.getElementById('fetchMaps').click();
   updateObstacleOptions();
   setInterval(pollControl, CONTROL_POLL_INTERVAL);
   pollControl();
