@@ -114,9 +114,10 @@ function respawnTarget() {
     const y = row * CELL_SIZE;
     if (!gameMap.isWithinBounds(x, y, size, size)) continue;
     const temp = new Target(x, y, size);
+    const bbox = car.getBoundingBox(car.posX, car.posY);
     const collides =
       obstacles.some((o) => o.intersectsRect(x, y, size, size)) ||
-      temp.intersectsRect(car.posX, car.posY, car.imgWidth, car.imgHeight);
+      temp.intersectsRect(bbox.x, bbox.y, bbox.w, bbox.h);
     if (!collides) {
       targetMarker = temp;
       gameMap.target = targetMarker;
@@ -128,9 +129,13 @@ function respawnTarget() {
 
 const carImage = new Image();
 carImage.src = '/static/extracted_foreground.png';
+const HOTBOX_WIDTH_CM = 20;
+const HOTBOX_HEIGHT_CM = 40;
 const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
   startX: 100,
   startY: 100,
+  hitboxWidth: HOTBOX_WIDTH_CM / CM_PER_PX,
+  hitboxHeight: HOTBOX_HEIGHT_CM / CM_PER_PX,
 });
 refreshCarObjects();
 
@@ -251,11 +256,18 @@ function loop() {
   }
   car.showHitbox = showHitboxes;
   car.update(canvas.width, canvas.height);
-  if (
-    targetMarker &&
-    targetMarker.intersectsRect(car.posX, car.posY, car.imgWidth, car.imgHeight)
-  ) {
-    respawnTarget();
+  if (targetMarker) {
+    const bboxCurrent = car.getBoundingBox(car.posX, car.posY);
+    if (
+      targetMarker.intersectsRect(
+        bboxCurrent.x,
+        bboxCurrent.y,
+        bboxCurrent.w,
+        bboxCurrent.h,
+      )
+    ) {
+      respawnTarget();
+    }
   }
 
   redEl.textContent = Math.round(car.redConeLength);

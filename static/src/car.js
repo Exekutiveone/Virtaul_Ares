@@ -5,7 +5,12 @@ export class Car {
     scale,
     margin,
     objects,
-    { startX = 200, startY = 200 } = {},
+    {
+      startX = 200,
+      startY = 200,
+      hitboxWidth = null,
+      hitboxHeight = null,
+    } = {},
   ) {
     this.ctx = ctx;
     this.bg = image;
@@ -17,6 +22,11 @@ export class Car {
 
     this.imgWidth = 150 * scale;
     this.imgHeight = 80 * scale;
+
+    this.hitboxWidth =
+      hitboxWidth != null ? hitboxWidth : this.imgWidth;
+    this.hitboxHeight =
+      hitboxHeight != null ? hitboxHeight : this.imgHeight;
 
     this.posX = startX;
     this.posY = startY;
@@ -81,15 +91,17 @@ export class Car {
   getRotatedCorners(x, y, rotation = this.rotation) {
     const cx = x + this.imgWidth / 2;
     const cy = y + this.imgHeight / 2;
-    const w = this.imgWidth;
-    const h = this.imgHeight;
+    const w = this.hitboxWidth;
+    const h = this.hitboxHeight;
+    const offsetX = (this.imgWidth - w) / 2;
+    const offsetY = (this.imgHeight - h) / 2;
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
     const corners = [
-      [x, y],
-      [x + w, y],
-      [x + w, y + h],
-      [x, y + h],
+      [x + offsetX, y + offsetY],
+      [x + offsetX + w, y + offsetY],
+      [x + offsetX + w, y + offsetY + h],
+      [x + offsetX, y + offsetY + h],
     ].map(([px, py]) => {
       const dx = px - cx;
       const dy = py - cy;
@@ -282,10 +294,10 @@ export class Car {
     const bbox = this.getBoundingBox(nx, ny, newRotation);
 
     const inBounds =
-      nx >= this.margin &&
-      ny >= this.margin &&
-      nx + this.imgWidth <= canvasWidth - this.margin &&
-      ny + this.imgHeight <= canvasHeight - this.margin;
+      bbox.x >= this.margin &&
+      bbox.y >= this.margin &&
+      bbox.x + bbox.w <= canvasWidth - this.margin &&
+      bbox.y + bbox.h <= canvasHeight - this.margin;
 
     if (inBounds) {
       const hit = this.objects.some((obs) =>
