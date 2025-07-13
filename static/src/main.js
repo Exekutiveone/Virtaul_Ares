@@ -12,7 +12,8 @@ const CM_PER_PX = 2;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const dropdown = document.getElementById('obstacleSize');
+const typeSelect = document.getElementById('drawType');
+const sizeInput = document.getElementById('squareSize');
 const removeCheckbox = document.getElementById('removeMode');
 const generateMazeBtn = document.getElementById('generateMaze');
 const calcPathBtn = document.getElementById('calcPathBtn');
@@ -79,8 +80,14 @@ function sendTelemetry(front, rear, left, right) {
 let CELL_SIZE = parseFloat(cellCmInput.value) / CM_PER_PX;
 const initialWidthCm = parseFloat(widthCmInput.value);
 const initialHeightCm = parseFloat(heightCmInput.value);
-const initialCols = Math.max(1, Math.round(initialWidthCm / parseFloat(cellCmInput.value)));
-const initialRows = Math.max(1, Math.round(initialHeightCm / parseFloat(cellCmInput.value)));
+const initialCols = Math.max(
+  1,
+  Math.round(initialWidthCm / parseFloat(cellCmInput.value)),
+);
+const initialRows = Math.max(
+  1,
+  Math.round(initialHeightCm / parseFloat(cellCmInput.value)),
+);
 let gameMap = new GameMap(initialCols, initialRows, CELL_SIZE);
 let previewSize;
 updateObstacleOptions();
@@ -115,11 +122,16 @@ if (csvMapUrl) {
   });
 }
 let obstacles = gameMap.obstacles;
-previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
+previewSize =
+  typeSelect.value === 'target'
+    ? CELL_SIZE
+    : parseInt(sizeInput.value) * CELL_SIZE;
 let showHitboxes = false;
 let isDragging = false;
 let dragX = 0;
 let dragY = 0;
+let lastPaintX = 0;
+let lastPaintY = 0;
 let targetMarker = gameMap.target;
 let pathCells = [];
 
@@ -164,14 +176,13 @@ const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
 refreshCarObjects();
 
 function updateObstacleOptions() {
-  if (!dropdown) return;
-  const opts = dropdown.querySelectorAll('option');
-  opts.forEach((opt) => {
-    if (opt.value === 'target') return;
-    const cells = parseInt(opt.value);
-    opt.textContent = `${cells}x${cells}`;
-  });
-  previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
+  if (!typeSelect || !sizeInput) return;
+  const size = parseInt(sizeInput.value);
+  sizeInput.value = isNaN(size) ? 1 : Math.max(1, Math.min(25, size));
+  previewSize =
+    typeSelect.value === 'target'
+      ? CELL_SIZE
+      : parseInt(sizeInput.value) * CELL_SIZE;
 }
 
 function resizeCanvas() {
@@ -184,12 +195,38 @@ function updateTransform() {
   canvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
 }
 
+function paintCell(x, y) {
+  if (removeCheckbox.checked) {
+    if (
+      targetMarker &&
+      x === targetMarker.x &&
+      y === targetMarker.y &&
+      previewSize === targetMarker.radius
+    ) {
+      targetMarker = null;
+      gameMap.target = null;
+    }
+    const i = obstacles.findIndex((o) => o.x === x && o.y === y);
+    if (i !== -1) obstacles.splice(i, 1);
+  } else {
+    if (
+      !obstacles.some((o) => o.x === x && o.y === y && o.size === previewSize)
+    ) {
+      obstacles.push(new Obstacle(x, y, previewSize));
+    }
+  }
+  refreshCarObjects();
+  pathCells = [];
+}
+
 window.addEventListener('resize', resizeCanvas);
 
-dropdown.addEventListener('change', () => {
-  const val = dropdown.value;
-  previewSize = val === 'target' ? CELL_SIZE : parseInt(val) * CELL_SIZE;
-});
+function updatePreview() {
+  updateObstacleOptions();
+}
+
+typeSelect.addEventListener('change', updatePreview);
+sizeInput.addEventListener('change', updatePreview);
 
 canvas.addEventListener('mousedown', (e) => {
   if (zoomMode) {
@@ -206,6 +243,9 @@ canvas.addEventListener('mousedown', (e) => {
     Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
   dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
   isDragging = true;
+  lastPaintX = dragX;
+  lastPaintY = dragY;
+  if (typeSelect.value !== 'target') paintCell(dragX, dragY);
 });
 
 canvas.addEventListener('mouseup', () => {
@@ -215,30 +255,14 @@ canvas.addEventListener('mouseup', () => {
   }
   if (!editorMode) return;
   if (!isDragging) return;
-  const selected = dropdown.value;
+  const selected = typeSelect.value;
 
-  if (removeCheckbox.checked) {
-    if (
-      targetMarker &&
-      dragX === targetMarker.x &&
-      dragY === targetMarker.y &&
-      previewSize === targetMarker.radius
-    ) {
-      targetMarker = null;
-      gameMap.target = null;
-    }
-
-    const i = obstacles.findIndex((o) => o.x === dragX && o.y === dragY);
-    if (i !== -1) obstacles.splice(i, 1);
-  } else if (selected === 'target') {
+  if (selected === 'target' && !removeCheckbox.checked) {
     targetMarker = new Target(dragX, dragY, previewSize);
     gameMap.target = targetMarker;
-  } else {
-    obstacles.push(new Obstacle(dragX, dragY, previewSize));
+    refreshCarObjects();
+    pathCells = [];
   }
-
-  refreshCarObjects();
-  pathCells = [];
   isDragging = false;
 });
 
@@ -257,6 +281,14 @@ canvas.addEventListener('mousemove', (e) => {
   dragX =
     Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
   dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
+  if (
+    typeSelect.value !== 'target' &&
+    (dragX !== lastPaintX || dragY !== lastPaintY)
+  ) {
+    paintCell(dragX, dragY);
+    lastPaintX = dragX;
+    lastPaintY = dragY;
+  }
 });
 
 canvas.addEventListener('wheel', (e) => {
@@ -305,7 +337,7 @@ function loop() {
     });
     ctx.stroke();
   }
-  if (isDragging && dropdown.value !== 'target' && !removeCheckbox.checked) {
+  if (isDragging && typeSelect.value !== 'target' && !removeCheckbox.checked) {
     ctx.strokeStyle = 'red';
     ctx.lineWidth = 2;
     ctx.strokeRect(dragX, dragY, previewSize, previewSize);
@@ -396,11 +428,11 @@ if (editorMode) {
     .getElementById('saveMap')
     .addEventListener('click', () => db.downloadMap(gameMap));
 
-
-
   document
     .getElementById('loadMapBtn')
-    .addEventListener('click', () => document.getElementById('loadMap').click());
+    .addEventListener('click', () =>
+      document.getElementById('loadMap').click(),
+    );
   document.getElementById('loadMap').addEventListener('change', loadMapFile);
   loadMapCsvBtn.addEventListener('click', () => loadMapCsvInput.click());
   saveMapCsvBtn.addEventListener('click', () => {
@@ -431,30 +463,28 @@ if (editorMode) {
   }
   loadMapCsvInput.addEventListener('change', loadMapCsv);
 
-
   document.getElementById('setSizeBtn').addEventListener('click', () => {
-  const wCm = parseFloat(widthCmInput.value);
-  const hCm = parseFloat(heightCmInput.value);
-  const cm = parseFloat(cellCmInput.value);
-  if (isNaN(wCm) || isNaN(hCm) || wCm <= 0 || hCm <= 0) {
-    alert('Invalid size');
-    return;
-  }
-  const newCell = isNaN(cm) ? CELL_SIZE : cm / CM_PER_PX;
-  CELL_SIZE = newCell;
-  const cellCm = isNaN(cm) ? CELL_SIZE * CM_PER_PX : cm;
-  const cols = Math.max(1, Math.round(wCm / cellCm));
-  const rows = Math.max(1, Math.round(hCm / cellCm));
-  gameMap = new GameMap(cols, rows, CELL_SIZE);
-  obstacles = gameMap.obstacles;
-  targetMarker = null;
-  refreshCarObjects();
-  resizeCanvas();
-  pathCells = [];
-  generateBorder(gameMap, respawnTarget);
-  updateObstacleOptions();
-});
-
+    const wCm = parseFloat(widthCmInput.value);
+    const hCm = parseFloat(heightCmInput.value);
+    const cm = parseFloat(cellCmInput.value);
+    if (isNaN(wCm) || isNaN(hCm) || wCm <= 0 || hCm <= 0) {
+      alert('Invalid size');
+      return;
+    }
+    const newCell = isNaN(cm) ? CELL_SIZE : cm / CM_PER_PX;
+    CELL_SIZE = newCell;
+    const cellCm = isNaN(cm) ? CELL_SIZE * CM_PER_PX : cm;
+    const cols = Math.max(1, Math.round(wCm / cellCm));
+    const rows = Math.max(1, Math.round(hCm / cellCm));
+    gameMap = new GameMap(cols, rows, CELL_SIZE);
+    obstacles = gameMap.obstacles;
+    targetMarker = null;
+    refreshCarObjects();
+    resizeCanvas();
+    pathCells = [];
+    generateBorder(gameMap, respawnTarget);
+    updateObstacleOptions();
+  });
 }
 
 calcPathBtn.addEventListener('click', () => {
