@@ -21,6 +21,7 @@ const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
 const findCarBtn = document.getElementById('findCarBtn');
 const canvasContainer = document.getElementById('canvasContainer');
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
+const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
 const loadMapCsvInput = document.getElementById('loadMapCsv');
 const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
 const redEl = document.getElementById('redLength');
@@ -93,6 +94,7 @@ updateObstacleOptions();
 const params = new URLSearchParams(window.location.search);
 const csvMapUrl = params.get('map');
 const editorMode = params.has('editor');
+let currentCsvFile = null;
 if (!editorMode) {
   const e1 = document.getElementById('editorTools');
   const e2 = document.getElementById('editorTools2');
@@ -100,6 +102,11 @@ if (!editorMode) {
   if (e2) e2.style.display = 'none';
 }
 if (csvMapUrl) {
+  if (csvMapUrl.startsWith('/static/maps/')) {
+    currentCsvFile = decodeURIComponent(csvMapUrl.substring('/static/maps/'.length));
+    const nameInput = document.getElementById('mapName');
+    if (nameInput && !nameInput.value) nameInput.value = currentCsvFile;
+  }
   db.loadMapCsvUrl(csvMapUrl).then((gm) => {
     gameMap = gm;
     CELL_SIZE = gameMap.cellSize;
@@ -439,6 +446,21 @@ if (editorMode) {
     db.downloadMapCsv(gameMap, n + '.csv');
     db.uploadCsvMap(n, csv);
   });
+  if (currentCsvFile) {
+    overwriteCsvBtn.style.display = 'inline-block';
+    overwriteCsvBtn.addEventListener('click', () => {
+      const csv = db.serializeCsvMap(gameMap);
+      fetch(`/api/csv-maps/${encodeURIComponent(currentCsvFile)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv }),
+      }).then((res) => {
+        if (!res.ok) alert('Fehler beim Speichern');
+      });
+    });
+  } else {
+    overwriteCsvBtn.style.display = 'none';
+  }
   loadMapCsvInput.addEventListener('change', loadMapCsv);
 
   document.getElementById('setSizeBtn').addEventListener('click', () => {

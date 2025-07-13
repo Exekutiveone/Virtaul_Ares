@@ -32,4 +32,6 @@ Without these servers the related features of the HTML page will not work.
 The control panel of `map2.html` contains buttons for working with maps. Maps
 can be saved and loaded locally as JSON or CSV files. The previous server based
 database for storing maps has been removed, so all map management now happens
-through file download and upload only.
+through file download and upload only. When editing a map that was loaded from
+the server's CSV list you can use the **CSV überschreiben** button to overwrite
+the original file instead of downloading a new one.
