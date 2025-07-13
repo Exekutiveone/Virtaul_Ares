@@ -432,8 +432,10 @@ export class Car {
     )
       this.angularVelocity = 0;
 
-    const nx = this.posX + Math.cos(this.rotation) * this.velocity;
-    const ny = this.posY + Math.sin(this.rotation) * this.velocity;
+    // Move in the direction the car's front is facing.
+    const frontRot = this.rotation + Math.PI;
+    const nx = this.posX + Math.cos(frontRot) * this.velocity;
+    const ny = this.posY + Math.sin(frontRot) * this.velocity;
     const newRotation = this.rotation + this.angularVelocity;
     const bbox = this.getBoundingBox(nx, ny, newRotation);
 

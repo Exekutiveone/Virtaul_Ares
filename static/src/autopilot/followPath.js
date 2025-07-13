@@ -20,7 +20,8 @@ export async function followPath(car, pathCells, cellSize) {
         targetY - (car.posY + car.imgHeight / 2),
         targetX - (car.posX + car.imgWidth / 2),
       );
-      let diff = norm(angle - car.rotation);
+      // car.rotation points backwards; align the front to the path angle
+      let diff = norm(angle - (car.rotation + Math.PI));
       while (Math.abs(diff) > 0.1) {
         await sendAction(car, diff > 0 ? 'right' : 'left');
         await sleep(50);
@@ -30,7 +31,7 @@ export async function followPath(car, pathCells, cellSize) {
           targetY - (car.posY + car.imgHeight / 2),
           targetX - (car.posX + car.imgWidth / 2),
         );
-        diff = norm(angle - car.rotation);
+        diff = norm(angle - (car.rotation + Math.PI));
       }
       await sendAction(car, 'stop');
       let dist = Math.hypot(

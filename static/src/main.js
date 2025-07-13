@@ -352,7 +352,8 @@ function updateMouseFollow() {
   const cx = car.posX + car.imgWidth / 2;
   const cy = car.posY + car.imgHeight / 2;
   const angle = Math.atan2(mouseTarget.y - cy, mouseTarget.x - cx);
-  let diff = angle - car.rotation;
+  // Car.rotation describes its back direction, so align the front to the mouse
+  let diff = angle - (car.rotation + Math.PI);
   while (diff > Math.PI) diff -= 2 * Math.PI;
   while (diff < -Math.PI) diff += 2 * Math.PI;
   for (const k of Object.keys(car.keys)) car.keys[k] = false;
