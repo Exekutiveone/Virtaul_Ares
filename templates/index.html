@@ -8,54 +8,37 @@
       font-family: Arial, sans-serif;
       background: #111;
       color: #eee;
+      margin: 0;
+    }
+    #mapGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .tile {
+      background: #222;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
     }
-    #controls {
+    .tile canvas {
+      background: #fff;
+    }
+    .buttons {
       display: flex;
-      gap: 10px;
+      gap: 5px;
+      margin-top: 5px;
     }
-    select, button {
-      padding: 10px;
-      font-size: 16px;
+    button {
+      padding: 5px 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Map Auswahl</h1>
-  <div id="controls">
-    <select id="mapList"></select>
-    <button id="startBtn">Start</button>
-    <button id="editBtn">Map Editor</button>
-  </div>
-  <script type="module">
-    async function loadList() {
-      const res = await fetch('/static/maps/list.json');
-      const names = await res.json();
-      const select = document.getElementById('mapList');
-      names.forEach((n) => {
-        const opt = document.createElement('option');
-        opt.value = n;
-        opt.textContent = n;
-        select.appendChild(opt);
-      });
-    }
-    loadList();
-    document.getElementById('startBtn').addEventListener('click', () => {
-      const map = document.getElementById('mapList').value;
-      if (map) window.location.href = '/map2?map=/static/maps/' + encodeURIComponent(map);
-    });
-    document.getElementById('editBtn').addEventListener('click', () => {
-      const map = document.getElementById('mapList').value;
-      const url = map
-        ? '/map2?map=/static/maps/' + encodeURIComponent(map) + '&editor=1'
-        : '/map2?editor=1';
-      window.location.href = url;
-    });
-  </script>
+  <h1 style="text-align:center;padding:10px 0;">Map Auswahl</h1>
+  <div id="mapGrid"></div>
+  <script type="module" src="{{ url_for('static', filename='src/index.js') }}"></script>
 </body>
 </html>

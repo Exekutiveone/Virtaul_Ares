@@ -85,6 +85,13 @@ let previewSize;
 updateObstacleOptions();
 const params = new URLSearchParams(window.location.search);
 const csvMapUrl = params.get('map');
+const editorMode = params.has('editor');
+if (!editorMode) {
+  const e1 = document.getElementById('editorTools');
+  const e2 = document.getElementById('editorTools2');
+  if (e1) e1.style.display = 'none';
+  if (e2) e2.style.display = 'none';
+}
 if (csvMapUrl) {
   db.loadMapCsvUrl(csvMapUrl).then((gm) => {
     gameMap = gm;
@@ -184,6 +191,7 @@ canvas.addEventListener('mousedown', (e) => {
     panStartY = e.clientY + translateY;
     return;
   }
+  if (!editorMode) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
@@ -198,6 +206,7 @@ canvas.addEventListener('mouseup', () => {
     isPanning = false;
     return;
   }
+  if (!editorMode) return;
   if (!isDragging) return;
   const selected = dropdown.value;
 
@@ -233,6 +242,7 @@ canvas.addEventListener('mousemove', (e) => {
     updateTransform();
     return;
   }
+  if (!editorMode) return;
   if (!isDragging) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
@@ -370,103 +380,114 @@ function loadMapCsv(e) {
   });
 }
 
-generateMazeBtn.addEventListener('click', () =>
-  generateMaze(gameMap, respawnTarget),
-);
+if (editorMode) {
+  generateMazeBtn.addEventListener('click', () =>
+    generateMaze(gameMap, respawnTarget),
+  );
 
-document
-  .getElementById('saveMap')
-  .addEventListener('click', () => db.downloadMap(gameMap));
+  document
+    .getElementById('saveMap')
+    .addEventListener('click', () => db.downloadMap(gameMap));
 
-document.getElementById('saveMapDb').addEventListener('click', () => {
-  let name = document.getElementById('mapName').value.trim();
-  if (!name) {
-    name = db.getDefaultMapName();
-    document.getElementById('mapName').value = name;
-  }
-  db.uploadMap(name, gameMap)
-    .then((res) => {
-      if (res.ok) alert('Gespeichert');
-      else res.text().then((t) => alert('Fehler beim Speichern:\n' + t));
-    })
-    .catch((err) => alert('Netzwerkfehler:\n' + err));
-});
-
-document
-  .getElementById('loadMapBtn')
-  .addEventListener('click', () => document.getElementById('loadMap').click());
-document.getElementById('loadMap').addEventListener('change', loadMapFile);
-loadMapCsvBtn.addEventListener('click', () => loadMapCsvInput.click());
-saveMapCsvBtn.addEventListener('click', () => db.downloadMapCsv(gameMap));
-loadMapCsvInput.addEventListener('change', loadMapCsv);
-
-document.getElementById('loadMapDb').addEventListener('click', () => {
-  const mapId = document.getElementById('mapSelect').value;
-  if (!mapId) {
-    alert('Keine Map ausgewählt');
-    return;
-  }
-  db.loadMapFromDb(mapId).then((obj) => {
-    gameMap = GameMap.fromJSON(obj);
-    CELL_SIZE = gameMap.cellSize;
-    obstacles = gameMap.obstacles;
-    targetMarker = gameMap.target;
-    refreshCarObjects();
-    pathCells = [];
-    widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
-    heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
-    resizeCanvas();
+  document.getElementById('saveMapDb').addEventListener('click', () => {
+    let name = document.getElementById('mapName').value.trim();
+    if (!name) {
+      name = db.getDefaultMapName();
+      document.getElementById('mapName').value = name;
+    }
+    db.uploadMap(name, gameMap)
+      .then((res) => {
+        if (res.ok) alert('Gespeichert');
+        else res.text().then((t) => alert('Fehler beim Speichern:\n' + t));
+      })
+      .catch((err) => alert('Netzwerkfehler:\n' + err));
   });
-});
 
-document.getElementById('fetchMaps').addEventListener('click', () => {
-  db.fetchAvailableMaps().then((data) => {
-    const select = document.getElementById('mapSelect');
-    select.innerHTML = '';
-    data.forEach((m) => {
-      const opt = document.createElement('option');
-      opt.value = m.id;
-      opt.textContent = m.name + ' (' + m.created_at + ')';
-      select.appendChild(opt);
+  document
+    .getElementById('loadMapBtn')
+    .addEventListener('click', () => document.getElementById('loadMap').click());
+  document.getElementById('loadMap').addEventListener('change', loadMapFile);
+  loadMapCsvBtn.addEventListener('click', () => loadMapCsvInput.click());
+  saveMapCsvBtn.addEventListener('click', () => {
+    const nameInput = document.getElementById('mapName');
+    let n = nameInput.value.trim();
+    if (!n) {
+      n = db.getDefaultMapName();
+      nameInput.value = n;
+    }
+    const csv = db.serializeCsvMap(gameMap);
+    db.downloadMapCsv(gameMap, n + '.csv');
+    db.uploadCsvMap(n, csv);
+  });
+  loadMapCsvInput.addEventListener('change', loadMapCsv);
+
+  document.getElementById('loadMapDb').addEventListener('click', () => {
+    const mapId = document.getElementById('mapSelect').value;
+    if (!mapId) {
+      alert('Keine Map ausgewählt');
+      return;
+    }
+    db.loadMapFromDb(mapId).then((obj) => {
+      gameMap = GameMap.fromJSON(obj);
+      CELL_SIZE = gameMap.cellSize;
+      obstacles = gameMap.obstacles;
+      targetMarker = gameMap.target;
+      refreshCarObjects();
+      pathCells = [];
+      widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
+      heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
+      resizeCanvas();
     });
   });
-});
 
-document.getElementById('renameMapBtn').addEventListener('click', () => {
-  const mapId = document.getElementById('mapSelect').value;
-  const newName = document.getElementById('renameMapName').value.trim();
-  if (!mapId) {
-    alert('Keine Map ausgewählt');
-    return;
-  }
-  if (!newName) {
-    alert('Neuer Name fehlt');
-    return;
-  }
-  db.renameMap(mapId, newName).then((res) => {
-    if (res.ok) {
-      document.getElementById('fetchMaps').click();
-      alert('Umbenannt');
-    } else res.text().then((t) => alert('Fehler beim Umbenennen:\n' + t));
+  document.getElementById('fetchMaps').addEventListener('click', () => {
+    db.fetchAvailableMaps().then((data) => {
+      const select = document.getElementById('mapSelect');
+      select.innerHTML = '';
+      data.forEach((m) => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name + ' (' + m.created_at + ')';
+        select.appendChild(opt);
+      });
+    });
   });
-});
 
-document.getElementById('deleteMapBtn').addEventListener('click', () => {
-  const mapId = document.getElementById('mapSelect').value;
-  if (!mapId) {
-    alert('Keine Map ausgewählt');
-    return;
-  }
-  if (!confirm('Map löschen?')) return;
-  db.deleteMap(mapId).then((res) => {
-    if (res.ok) {
-      document.getElementById('fetchMaps').click();
-      alert('Gelöscht');
-    } else res.text().then((t) => alert('Fehler beim Löschen:\n' + t));
+  document.getElementById('renameMapBtn').addEventListener('click', () => {
+    const mapId = document.getElementById('mapSelect').value;
+    const newName = document.getElementById('renameMapName').value.trim();
+    if (!mapId) {
+      alert('Keine Map ausgewählt');
+      return;
+    }
+    if (!newName) {
+      alert('Neuer Name fehlt');
+      return;
+    }
+    db.renameMap(mapId, newName).then((res) => {
+      if (res.ok) {
+        document.getElementById('fetchMaps').click();
+        alert('Umbenannt');
+      } else res.text().then((t) => alert('Fehler beim Umbenennen:\n' + t));
+    });
   });
-});
 
-document.getElementById('setSizeBtn').addEventListener('click', () => {
+  document.getElementById('deleteMapBtn').addEventListener('click', () => {
+    const mapId = document.getElementById('mapSelect').value;
+    if (!mapId) {
+      alert('Keine Map ausgewählt');
+      return;
+    }
+    if (!confirm('Map löschen?')) return;
+    db.deleteMap(mapId).then((res) => {
+      if (res.ok) {
+        document.getElementById('fetchMaps').click();
+        alert('Gelöscht');
+      } else res.text().then((t) => alert('Fehler beim Löschen:\n' + t));
+    });
+  });
+
+  document.getElementById('setSizeBtn').addEventListener('click', () => {
   const wCm = parseFloat(widthCmInput.value);
   const hCm = parseFloat(heightCmInput.value);
   const cm = parseFloat(cellCmInput.value);
@@ -488,6 +509,8 @@ document.getElementById('setSizeBtn').addEventListener('click', () => {
   generateBorder(gameMap, respawnTarget);
   updateObstacleOptions();
 });
+
+}
 
 calcPathBtn.addEventListener('click', () => {
   if (!targetMarker) return;
