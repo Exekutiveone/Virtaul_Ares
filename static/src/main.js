@@ -86,7 +86,6 @@ if (csvMapUrl) {
 }
 let obstacles = gameMap.obstacles;
 previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
-let previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
 let showHitboxes = false;
 let isDragging = false;
 let dragX = 0;
