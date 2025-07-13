@@ -136,6 +136,44 @@ export class Car {
     this.ctx.stroke();
   }
 
+  // Calculate the distance from point (fx, fy) along
+  // `angle` until the ray hits the rectangle `rect`.
+  // Returns Infinity if there is no intersection in
+  // the ray's forward direction.
+  rayRectIntersection(fx, fy, angle, rect) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    let minT = Infinity;
+
+    if (Math.abs(cos) > 1e-6) {
+      let t = (rect.x - fx) / cos;
+      if (t >= 0) {
+        const y = fy + t * sin;
+        if (y >= rect.y && y <= rect.y + rect.h) minT = Math.min(minT, t);
+      }
+      t = (rect.x + rect.w - fx) / cos;
+      if (t >= 0) {
+        const y = fy + t * sin;
+        if (y >= rect.y && y <= rect.y + rect.h) minT = Math.min(minT, t);
+      }
+    }
+
+    if (Math.abs(sin) > 1e-6) {
+      let t = (rect.y - fy) / sin;
+      if (t >= 0) {
+        const x = fx + t * cos;
+        if (x >= rect.x && x <= rect.x + rect.w) minT = Math.min(minT, t);
+      }
+      t = (rect.y + rect.h - fy) / sin;
+      if (t >= 0) {
+        const x = fx + t * cos;
+        if (x >= rect.x && x <= rect.x + rect.w) minT = Math.min(minT, t);
+      }
+    }
+
+    return minT;
+  }
+
   drawKegel(x, y, length, angle, color, baseWidth) {
     x *= this.scale;
     y *= this.scale;
@@ -155,20 +193,28 @@ export class Car {
     let maxLen = length;
 
     for (const o of this.objects) {
-      const vx = Math.cos(finalAngle);
-      const vy = Math.sin(finalAngle);
-      const dxo = o.x - fx;
-      const dyo = o.y - fy;
-      const proj = dxo * vx + dyo * vy;
-      if (proj > 0 && proj < maxLen) {
-        const closestX = fx + vx * proj;
-        const closestY = fy + vy * proj;
-        const distSq = (o.x - closestX) ** 2 + (o.y - closestY) ** 2;
-        const r = o.radius != null ? o.radius : o.size / 2;
-        if (distSq <= r * r) {
-          const offset = Math.sqrt(r * r - distSq);
-          maxLen = proj - offset;
+      if (o.radius != null) {
+        const r = o.radius;
+        const cxObj = o.x + r;
+        const cyObj = o.y + r;
+        const vx = Math.cos(finalAngle);
+        const vy = Math.sin(finalAngle);
+        const dxo = cxObj - fx;
+        const dyo = cyObj - fy;
+        const proj = dxo * vx + dyo * vy;
+        if (proj > 0 && proj < maxLen) {
+          const closestX = fx + vx * proj;
+          const closestY = fy + vy * proj;
+          const distSq = (cxObj - closestX) ** 2 + (cyObj - closestY) ** 2;
+          if (distSq <= r * r) {
+            const offset = Math.sqrt(r * r - distSq);
+            maxLen = proj - offset;
+          }
         }
+      } else {
+        const rect = { x: o.x, y: o.y, w: o.size, h: o.size };
+        const len = this.rayRectIntersection(fx, fy, finalAngle, rect);
+        if (len < maxLen) maxLen = len;
       }
     }
 
