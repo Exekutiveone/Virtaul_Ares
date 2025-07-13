@@ -250,6 +250,7 @@ export class Car {
   }
 
   castRayPath(fx, fy, angle, length, depth = 0) {
+    if (length <= 0 || depth > 3) return [];
     if (length <= 0 || depth > 1) return [];
 
     let minDist = length;
@@ -330,6 +331,8 @@ export class Car {
       total += seg.length;
     }
 
+    const first = segments.length ? segments[0].length : length;
+    return first;
     return total;
   }
 
