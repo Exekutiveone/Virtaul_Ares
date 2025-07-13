@@ -7,6 +7,9 @@ import * as db from './db.js';
 import { followPath, aStar } from './autopilot/index.js';
 import { CONTROL_API_URL, TELEMETRY_API_URL } from './config.js';
 
+// 1 Pixel entspricht dieser Anzahl Zentimeter
+const CM_PER_PX = 2;
+
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const dropdown = document.getElementById('obstacleSize');
@@ -27,6 +30,7 @@ const blueBackEl = document.getElementById('blueBack');
 const speedEl = document.getElementById('speed');
 const rpmEl = document.getElementById('rpm');
 const gyroEl = document.getElementById('gyro');
+const cellCmInput = document.getElementById('gridCellCm');
 
 const TELEMETRY_INTERVAL = 500; // ms
 let lastTelemetry = 0;
@@ -59,7 +63,10 @@ function sendTelemetry(front, rear, left, right) {
   }).catch((err) => console.error('sendTelemetry failed', err));
 }
 
-let gameMap = new GameMap(20, 15);
+let CELL_SIZE = parseFloat(cellCmInput.value) / CM_PER_PX;
+let gameMap = new GameMap(20, 15, CELL_SIZE);
+let previewSize;
+updateObstacleOptions();
 const params = new URLSearchParams(window.location.search);
 const csvMapUrl = params.get('map');
 if (csvMapUrl) {
@@ -68,6 +75,8 @@ if (csvMapUrl) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    cellCmInput.value = Math.round(gameMap.cellSize * CM_PER_PX);
+    updateObstacleOptions();
     refreshCarObjects();
     pathCells = [];
     document.getElementById('gridWidth').value = gameMap.cols;
@@ -75,9 +84,8 @@ if (csvMapUrl) {
     resizeCanvas();
   });
 }
-let CELL_SIZE = gameMap.cellSize;
 let obstacles = gameMap.obstacles;
-let previewSize = parseInt(dropdown.value);
+previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
 let showHitboxes = false;
 let isDragging = false;
 let dragX = 0;
@@ -120,6 +128,17 @@ const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
 });
 refreshCarObjects();
 
+function updateObstacleOptions() {
+  if (!dropdown) return;
+  const opts = dropdown.querySelectorAll('option');
+  opts.forEach((opt) => {
+    if (opt.value === 'target') return;
+    const cells = parseInt(opt.value);
+    opt.textContent = `${cells}x${cells}`;
+  });
+  previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
+}
+
 function resizeCanvas() {
   canvas.width = gameMap.cols * CELL_SIZE;
   canvas.height = gameMap.rows * CELL_SIZE;
@@ -129,7 +148,7 @@ window.addEventListener('resize', resizeCanvas);
 
 dropdown.addEventListener('change', () => {
   const val = dropdown.value;
-  previewSize = parseInt(val) || CELL_SIZE;
+  previewSize = val === 'target' ? CELL_SIZE : parseInt(val) * CELL_SIZE;
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -393,10 +412,13 @@ document.getElementById('deleteMapBtn').addEventListener('click', () => {
 document.getElementById('setSizeBtn').addEventListener('click', () => {
   const w = parseInt(document.getElementById('gridWidth').value, 10);
   const h = parseInt(document.getElementById('gridHeight').value, 10);
+  const cm = parseFloat(cellCmInput.value);
   if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
     alert('Invalid size');
     return;
   }
+  const newCell = isNaN(cm) ? CELL_SIZE : cm / CM_PER_PX;
+  CELL_SIZE = newCell;
   gameMap = new GameMap(w, h, CELL_SIZE);
   obstacles = gameMap.obstacles;
   targetMarker = null;
@@ -404,6 +426,7 @@ document.getElementById('setSizeBtn').addEventListener('click', () => {
   resizeCanvas();
   pathCells = [];
   generateBorder(gameMap, respawnTarget);
+  updateObstacleOptions();
 });
 
 calcPathBtn.addEventListener('click', () => {
@@ -435,6 +458,7 @@ toggleHitboxesBtn.addEventListener('click', () => {
 carImage.onload = () => {
   resizeCanvas();
   document.getElementById('fetchMaps').click();
+  updateObstacleOptions();
   setInterval(pollControl, CONTROL_POLL_INTERVAL);
   pollControl();
   loop();
