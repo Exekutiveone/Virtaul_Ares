@@ -129,8 +129,8 @@ function respawnTarget() {
 
 const carImage = new Image();
 carImage.src = '/static/extracted_foreground.png';
-const HOTBOX_WIDTH_CM = 20;
-const HOTBOX_HEIGHT_CM = 40;
+const HOTBOX_WIDTH_CM = 40;
+const HOTBOX_HEIGHT_CM = 20;
 const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
   startX: 100,
   startY: 100,
