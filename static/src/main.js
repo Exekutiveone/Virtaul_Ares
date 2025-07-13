@@ -22,19 +22,23 @@ const canvasContainer = document.getElementById('canvasContainer');
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const loadMapCsvInput = document.getElementById('loadMapCsv');
 const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
-const redEl = document.getElementById('redLength');
-const greenEl = document.getElementById('greenLength');
-const blueLeft1El = document.getElementById('blueLeft1');
-const blueLeft2El = document.getElementById('blueLeft2');
-const blueRight1El = document.getElementById('blueRight1');
-const blueRight2El = document.getElementById('blueRight2');
-const blueBackEl = document.getElementById('blueBack');
-const speedEl = document.getElementById('speed');
-const rpmEl = document.getElementById('rpm');
-const gyroEl = document.getElementById('gyro');
+const distFrontEl = document.getElementById('distFront');
+const distLeftEl = document.getElementById('distLeft');
+const distRightEl = document.getElementById('distRight');
+const distBackEl = document.getElementById('distBack');
+const speedEl = document.getElementById('uiSpeed');
+const rpmEl = document.getElementById('uiRpm');
+const gyroEl = document.getElementById('uiGyro');
+const orientationCanvas = document.getElementById('orientation');
+const modeKeyboardBtn = document.getElementById('modeKeyboard');
+const modeMouseBtn = document.getElementById('modeMouse');
 const cellCmInput = document.getElementById('gridCellCm');
 const widthCmInput = document.getElementById('gridWidth');
 const heightCmInput = document.getElementById('gridHeight');
+
+let controlMode = 'keyboard';
+let mouseX = 0;
+let mouseY = 0;
 
 let zoomMode = false;
 let zoomScale = 1;
@@ -179,6 +183,44 @@ function updateTransform() {
 
 window.addEventListener('resize', resizeCanvas);
 
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  mouseX = (e.clientX - rect.left) * scaleX;
+  mouseY = (e.clientY - rect.top) * scaleY;
+});
+
+function updateModeButtons() {
+  if (controlMode === 'keyboard') {
+    modeKeyboardBtn.classList.add('active');
+    modeMouseBtn.classList.remove('active');
+  } else {
+    modeMouseBtn.classList.add('active');
+    modeKeyboardBtn.classList.remove('active');
+  }
+}
+
+modeKeyboardBtn.addEventListener('click', () => {
+  controlMode = 'keyboard';
+  updateModeButtons();
+});
+
+modeMouseBtn.addEventListener('click', () => {
+  controlMode = 'mouse';
+  updateModeButtons();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'm' || e.key === 'M') {
+    controlMode = 'mouse';
+    updateModeButtons();
+  } else if (e.key === 't' || e.key === 'T') {
+    controlMode = 'keyboard';
+    updateModeButtons();
+  }
+});
+
 dropdown.addEventListener('change', () => {
   const val = dropdown.value;
   previewSize = val === 'target' ? CELL_SIZE : parseInt(val) * CELL_SIZE;
@@ -260,6 +302,27 @@ canvas.addEventListener('wheel', (e) => {
   updateTransform();
 });
 
+function normAngle(a) {
+  while (a > Math.PI) a -= 2 * Math.PI;
+  while (a < -Math.PI) a += 2 * Math.PI;
+  return a;
+}
+
+function updateMouseControl() {
+  if (controlMode !== 'mouse') return;
+  const cx = car.posX + car.imgWidth / 2;
+  const cy = car.posY + car.imgHeight / 2;
+  const dx = mouseX - cx;
+  const dy = mouseY - cy;
+  const dist = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx);
+  const diff = normAngle(angle - car.rotation);
+  car.keys.ArrowLeft = diff < -0.1;
+  car.keys.ArrowRight = diff > 0.1;
+  car.keys.ArrowUp = dist > 10;
+  car.keys.ArrowDown = false;
+}
+
 function drawGrid() {
   ctx.strokeStyle = '#ddd';
   for (let x = 0; x <= canvas.width; x += CELL_SIZE) {
@@ -278,6 +341,7 @@ function drawGrid() {
 
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  updateMouseControl();
   drawGrid();
   for (const o of obstacles) {
     o.draw(ctx);
@@ -319,28 +383,32 @@ function loop() {
     }
   }
 
-  redEl.textContent = Math.round(car.redConeLength);
-  greenEl.textContent = Math.round(car.greenConeLength);
-  const bl1 = car.drawKegel(65, 7, 150, -Math.PI / 2, 'blue', 8);
-  const bl2 = car.drawKegel(72, 7, 150, -Math.PI / 2, 'blue', 8);
-  const br1 = car.drawKegel(91, 7, 150, -Math.PI / 2, 'blue', 8);
-  const br2 = car.drawKegel(97, 7, 150, -Math.PI / 2, 'blue', 8);
-  const bb = car.drawKegel(143, 37, 150, 0, 'blue', 8);
-  blueLeft1El.textContent = Math.round(bl1);
-  blueLeft2El.textContent = Math.round(bl2);
-  blueRight1El.textContent = Math.round(br1);
-  blueRight2El.textContent = Math.round(br2);
-  blueBackEl.textContent = Math.round(bb);
-  speedEl.textContent = Math.round(car.speed);
+  distFrontEl.textContent = Math.round(car.frontDist * CM_PER_PX);
+  distLeftEl.textContent = Math.round(car.leftDist * CM_PER_PX);
+  distRightEl.textContent = Math.round(car.rightDist * CM_PER_PX);
+  distBackEl.textContent = Math.round(car.backDist * CM_PER_PX);
+  speedEl.textContent = Math.round(car.speed * CM_PER_PX);
   rpmEl.textContent = Math.round(car.rpm);
   gyroEl.textContent = car.gyro.toFixed(1);
 
+  const oc = orientationCanvas.getContext('2d');
+  oc.clearRect(0, 0, orientationCanvas.width, orientationCanvas.height);
+  oc.save();
+  oc.translate(orientationCanvas.width / 2, orientationCanvas.height / 2);
+  oc.rotate(car.rotation);
+  oc.strokeStyle = '#0f0';
+  oc.beginPath();
+  oc.moveTo(0, 0);
+  oc.lineTo(orientationCanvas.width / 2 - 2, 0);
+  oc.stroke();
+  oc.restore();
+
   const now = Date.now();
   if (now - lastTelemetry >= TELEMETRY_INTERVAL) {
-    const front = Math.round(car.redConeLength);
-    const rear = Math.round(bb);
-    const left = Math.round(Math.min(bl1, bl2));
-    const right = Math.round(Math.min(br1, br2));
+    const front = Math.round(car.frontDist * CM_PER_PX);
+    const rear = Math.round(car.backDist * CM_PER_PX);
+    const left = Math.round(car.leftDist * CM_PER_PX);
+    const right = Math.round(car.rightDist * CM_PER_PX);
     sendTelemetry(front, rear, left, right);
     lastTelemetry = now;
   }

@@ -42,6 +42,33 @@
     .cone-display {
       font-size: 16px;
     }
+    #sensorPanel {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 10px;
+      font-size: 14px;
+    }
+    #dataBox {
+      margin-top: 10px;
+      background: #222;
+      padding: 5px;
+    }
+    #orientation {
+      display: block;
+      margin: 5px auto 0 auto;
+      background: #111;
+    }
+    #modeSwitch {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+    }
+    #modeSwitch button.active {
+      background: #555;
+    }
     #canvasContainer {
       flex: 1;
       overflow: hidden;
@@ -55,6 +82,22 @@
   </style>
 </head>
 <body>
+  <div id="sensorPanel">
+    <div style="color:red">Front: <span id="distFront">0</span> cm</div>
+    <div style="color:blue">Links: <span id="distLeft">0</span> cm</div>
+    <div style="color:blue">Rechts: <span id="distRight">0</span> cm</div>
+    <div style="color:blue">Hinten: <span id="distBack">0</span> cm</div>
+    <div id="dataBox">
+      <div>Geschwindigkeit: <span id="uiSpeed">0</span> cm/s</div>
+      <div>Drehzahl: <span id="uiRpm">0</span></div>
+      <div>Gyro: <span id="uiGyro">0</span>°</div>
+      <canvas id="orientation" width="40" height="40"></canvas>
+    </div>
+  </div>
+  <div id="modeSwitch">
+    <button id="modeKeyboard" class="active">Tastatur</button>
+    <button id="modeMouse">Maus</button>
+  </div>
   <div id="controls">
     <div id="editorTools">
       <div>
@@ -72,16 +115,6 @@
       </div>
       <button id="generateMaze">Labyrinth generieren</button>
     </div>
-    <div class="cone-display">Rot: <span id="redLength">0</span> px</div>
-    <div class="cone-display">Grün: <span id="greenLength">0</span> px</div>
-    <div class="cone-display">Blau Links 1: <span id="blueLeft1">0</span> px</div>
-    <div class="cone-display">Blau Links 2: <span id="blueLeft2">0</span> px</div>
-    <div class="cone-display">Blau Rechts 1: <span id="blueRight1">0</span> px</div>
-    <div class="cone-display">Blau Rechts 2: <span id="blueRight2">0</span> px</div>
-    <div class="cone-display">Blau Hinten: <span id="blueBack">0</span> px</div>
-    <div class="cone-display">Geschwindigkeit: <span id="speed">0</span> px/s</div>
-    <div class="cone-display">Drehzahl: <span id="rpm">0</span> RPM</div>
-    <div class="cone-display">Gyro: <span id="gyro">0</span>°</div>
     <div id="editorTools2">
       <label>Size (cm):
         <input id="gridWidth" type="number" value="6400" min="1" style="width:60px"> x

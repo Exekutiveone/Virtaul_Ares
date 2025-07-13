@@ -48,6 +48,10 @@ export class Car {
     this.gyro = 0;
 
     this.autopilot = false;
+    this.frontDist = 0;
+    this.leftDist = 0;
+    this.rightDist = 0;
+    this.backDist = 0;
     this.keys = {
       ArrowUp: false,
       ArrowDown: false,
@@ -136,61 +140,84 @@ export class Car {
     this.ctx.stroke();
   }
 
-  drawKegel(x, y, length, angle, color, baseWidth) {
-    x *= this.scale;
-    y *= this.scale;
-    baseWidth *= this.scale;
-    length *= this.scale;
-
-    const cx = this.posX + this.imgWidth / 2;
-    const cy = this.posY + this.imgHeight / 2;
-    const dx = x - this.imgWidth / 2;
-    const dy = y - this.imgHeight / 2;
-    const rx = dx * Math.cos(this.rotation) - dy * Math.sin(this.rotation);
-    const ry = dx * Math.sin(this.rotation) + dy * Math.cos(this.rotation);
-
-    const fx = cx + rx;
-    const fy = cy + ry;
-    const finalAngle = angle + this.rotation;
-    let maxLen = length;
-
+  castRay(sx, sy, angle, maxLen) {
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    let best = maxLen;
     for (const o of this.objects) {
-      const vx = Math.cos(finalAngle);
-      const vy = Math.sin(finalAngle);
-      const dxo = o.x - fx;
-      const dyo = o.y - fy;
-      const proj = dxo * vx + dyo * vy;
-      if (proj > 0 && proj < maxLen) {
-        const closestX = fx + vx * proj;
-        const closestY = fy + vy * proj;
-        const distSq = (o.x - closestX) ** 2 + (o.y - closestY) ** 2;
-        const r = o.radius != null ? o.radius : o.size / 2;
-        if (distSq <= r * r) {
-          const offset = Math.sqrt(r * r - distSq);
-          maxLen = proj - offset;
-        }
-      }
+      const res = this.rayRectIntersection(
+        sx,
+        sy,
+        dx,
+        dy,
+        o.x,
+        o.y,
+        o.size,
+        o.size,
+      );
+      if (!res) continue;
+      const { t, normal } = res;
+      if (t < 0 || t > best) continue;
+      const nAngle = Math.atan2(normal[1], normal[0]);
+      const strength = Math.abs(Math.cos(angle - nAngle));
+      if (t <= maxLen * strength) best = t;
     }
+    return best;
+  }
 
-    const tipX = fx;
-    const tipY = fy;
-    const baseX = tipX + Math.cos(finalAngle) * maxLen;
-    const baseY = tipY + Math.sin(finalAngle) * maxLen;
-    const leftX = baseX + (Math.cos(finalAngle + Math.PI / 2) * baseWidth) / 2;
-    const leftY = baseY + (Math.sin(finalAngle + Math.PI / 2) * baseWidth) / 2;
-    const rightX = baseX + (Math.cos(finalAngle - Math.PI / 2) * baseWidth) / 2;
-    const rightY = baseY + (Math.sin(finalAngle - Math.PI / 2) * baseWidth) / 2;
+  rayRectIntersection(sx, sy, dx, dy, rx, ry, rw, rh) {
+    let tmin = -Infinity;
+    let tmax = Infinity;
+    if (dx !== 0) {
+      const tx1 = (rx - sx) / dx;
+      const tx2 = (rx + rw - sx) / dx;
+      tmin = Math.max(tmin, Math.min(tx1, tx2));
+      tmax = Math.min(tmax, Math.max(tx1, tx2));
+    } else if (sx < rx || sx > rx + rw) return null;
 
+    if (dy !== 0) {
+      const ty1 = (ry - sy) / dy;
+      const ty2 = (ry + rh - sy) / dy;
+      tmin = Math.max(tmin, Math.min(ty1, ty2));
+      tmax = Math.min(tmax, Math.max(ty1, ty2));
+    } else if (sy < ry || sy > ry + rh) return null;
+
+    if (tmax < 0 || tmin > tmax) return null;
+    const t = tmin >= 0 ? tmin : tmax;
+    if (t < 0) return null;
+    const hx = sx + dx * t;
+    const hy = sy + dy * t;
+    const eps = 1e-3;
+    let normal = [0, 0];
+    if (Math.abs(hx - rx) < eps) normal = [-1, 0];
+    else if (Math.abs(hx - (rx + rw)) < eps) normal = [1, 0];
+    else if (Math.abs(hy - ry) < eps) normal = [0, -1];
+    else if (Math.abs(hy - (ry + rh)) < eps) normal = [0, 1];
+    return { t, normal };
+  }
+
+  drawConeWorld(sx, sy, angle, length, color, baseWidth) {
+    const dist = this.castRay(sx, sy, angle, length);
+    const baseX = sx + Math.cos(angle) * dist;
+    const baseY = sy + Math.sin(angle) * dist;
+    const leftX =
+      baseX + (Math.cos(angle + Math.PI / 2) * baseWidth) / 2;
+    const leftY =
+      baseY + (Math.sin(angle + Math.PI / 2) * baseWidth) / 2;
+    const rightX =
+      baseX + (Math.cos(angle - Math.PI / 2) * baseWidth) / 2;
+    const rightY =
+      baseY + (Math.sin(angle - Math.PI / 2) * baseWidth) / 2;
     this.ctx.fillStyle = color;
     this.ctx.beginPath();
-    this.ctx.moveTo(tipX, tipY);
+    this.ctx.moveTo(sx, sy);
     this.ctx.lineTo(leftX, leftY);
     this.ctx.lineTo(rightX, rightY);
     this.ctx.closePath();
     this.ctx.fill();
-
-    return maxLen;
+    return dist;
   }
+
 
   draw(canvasWidth, canvasHeight) {
     this.drawBorder(canvasWidth, canvasHeight);
@@ -213,34 +240,54 @@ export class Car {
       }
     }
 
-    this.redConeLength = this.drawKegel(18, 40, 700, Math.PI, 'red', 6);
-    this.greenConeLength = this.drawKegel(45, 40, 400, Math.PI, 'green', 140);
-    const bluePoints = [
-      [65, 7],
-      [72, 7],
-      [91, 7],
-      [97, 7],
-    ];
-    this.blueConeLength = this.drawKegel(
-      bluePoints[0][0],
-      bluePoints[0][1],
-      150,
-      -Math.PI / 2,
-      'blue',
-      8,
+    const cx = this.posX + this.imgWidth / 2;
+    const cy = this.posY + this.imgHeight / 2;
+    const halfW = this.hitboxWidth / 2;
+    const halfH = this.hitboxHeight / 2;
+    const frontX = cx + Math.cos(this.rotation) * halfW;
+    const frontY = cy + Math.sin(this.rotation) * halfW;
+    const backX = cx - Math.cos(this.rotation) * halfW;
+    const backY = cy - Math.sin(this.rotation) * halfW;
+    const leftX = cx - Math.sin(this.rotation) * halfH;
+    const leftY = cy + Math.cos(this.rotation) * halfH;
+    const rightX = cx + Math.sin(this.rotation) * halfH;
+    const rightY = cy - Math.cos(this.rotation) * halfH;
+    const frontLen = 700 * this.scale;
+    const sideLen = 150 * this.scale;
+    const frontWidth = 6 * this.scale;
+    const sideWidth = 8 * this.scale;
+    this.frontDist = this.drawConeWorld(
+      frontX,
+      frontY,
+      this.rotation,
+      frontLen,
+      'red',
+      frontWidth,
     );
-    for (const a of bluePoints.slice(1))
-      this.drawKegel(a[0], a[1], 150, -Math.PI / 2, 'blue', 8);
-    const bluePoints2 = [
-      [64, 74],
-      [71, 74],
-      [90, 74],
-      [97, 74],
-    ];
-    for (const a of bluePoints2)
-      this.drawKegel(a[0], a[1], 150, Math.PI / 2, 'blue', 8);
-    this.drawKegel(143, 37, 150, 0, 'blue', 8);
-    this.drawKegel(143, 43, 150, 0, 'blue', 8);
+    this.leftDist = this.drawConeWorld(
+      leftX,
+      leftY,
+      this.rotation - Math.PI / 2,
+      sideLen,
+      'blue',
+      sideWidth,
+    );
+    this.rightDist = this.drawConeWorld(
+      rightX,
+      rightY,
+      this.rotation + Math.PI / 2,
+      sideLen,
+      'blue',
+      sideWidth,
+    );
+    this.backDist = this.drawConeWorld(
+      backX,
+      backY,
+      this.rotation + Math.PI,
+      sideLen,
+      'blue',
+      sideWidth,
+    );
   }
 
   update(canvasWidth, canvasHeight) {
