@@ -1,7 +1,12 @@
+
 from flask import Flask, request, jsonify, render_template
 from uuid import uuid4
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
+from flask import Flask, request, jsonify
+from uuid import uuid4
+
+app = Flask(__name__)
 
 # In-memory storage for maps and telemetry
 maps = {}
@@ -17,6 +22,7 @@ def index():
 @app.route('/map2')
 def map2_page():
     return render_template('map2.html')
+
 
 @app.route('/api/maps', methods=['GET', 'POST'])
 def maps_route():

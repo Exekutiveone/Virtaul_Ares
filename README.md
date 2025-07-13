@@ -14,6 +14,20 @@ Then open `http://127.0.0.1:5000/` in your browser. The Flask server exposes the
 - `http://127.0.0.1:5000/api/maps` for storing and retrieving maps.
 - `http://127.0.0.1:5000/api/car` for telemetry data from the simulator.
 - `http://127.0.0.1:5000/api/control` for remote control commands.
+   Then navigate to `http://localhost:8000/map2.html`.
+
+2. Start the Flask backend which provides the required API endpoints:
+
+   ```bash
+   python server.py
+   ```
+
+   This exposes the following services:
+   - `http://127.0.0.1:5000/api/maps` for storing and retrieving maps.
+   - `http://127.0.0.1:5001/api/car` for telemetry data from the simulator.
+   - `http://localhost:5002/api/control` for remote control commands.
+
+Without these servers the related features of the HTML page will not work.
 
 ## Saving and loading maps
 
