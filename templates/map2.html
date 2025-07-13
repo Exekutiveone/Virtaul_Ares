@@ -90,18 +90,16 @@
       <label>Quadrat (cm):
         <input id="gridCellCm" type="number" value="5" min="1" max="25" style="width:60px">
       </label>
-      <button id="setSizeBtn">Set Size</button>
-      <input type="text" id="mapName" placeholder="Map name">
-      <button id="saveMap">Download Map</button>
-      <button id="loadMapBtn">Load Map</button>
-      <button id="loadMapCsvBtn">Load CSV</button>
-      <button id="saveMapCsv">Download CSV</button>
-      <input type="file" id="loadMapCsv" style="display:none" accept="text/csv" />
+        <button id="newMapBtn">Neue Map erstellen</button>
+        <button id="loadMapCsvBtn">Map laden</button>
+        <button id="saveMapCsv">Map speichern</button>
+        <input type="text" id="mapName" placeholder="Dateiname">
+        <span id="currentFile" style="margin-left:10px"></span>
+        <input type="file" id="loadMapCsv" style="display:none" accept="text/csv" />
     </div>
     <button id="calcPathBtn">Optimal Pathfinder</button>
     <button id="toggleHitboxes">Hitboxen anzeigen</button>
     <button id="findCarBtn">Auto finden</button>
-    <input type="file" id="loadMap" style="display:none" accept="application/json">
   </div>
   <div id="canvasContainer">
     <canvas id="canvas"></canvas>

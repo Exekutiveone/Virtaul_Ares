@@ -22,6 +22,8 @@ const canvasContainer = document.getElementById('canvasContainer');
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const loadMapCsvInput = document.getElementById('loadMapCsv');
 const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
+const newMapBtn = document.getElementById('newMapBtn');
+const currentFileEl = document.getElementById('currentFile');
 const redEl = document.getElementById('redLength');
 const greenEl = document.getElementById('greenLength');
 const blueLeft1El = document.getElementById('blueLeft1');
@@ -43,6 +45,7 @@ let translateY = 0;
 let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
+let lastLoadedMapName = '';
 
 const TELEMETRY_INTERVAL = 500; // ms
 let lastTelemetry = 0;
@@ -105,6 +108,11 @@ if (csvMapUrl) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
+    lastLoadedMapName = csvMapUrl.split('/').pop().replace(/\.csv$/i, '');
+    const nameInput = document.getElementById('mapName');
+    if (nameInput) nameInput.value = lastLoadedMapName;
+    if (currentFileEl) currentFileEl.textContent = lastLoadedMapName + '.csv';
+    alert(`Map "${lastLoadedMapName}.csv" erfolgreich geladen.`);
   });
 }
 let obstacles = gameMap.obstacles;
@@ -376,7 +384,12 @@ function loadMapCsv(e) {
     pathCells = [];
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
+    cellCmInput.value = Math.round(gameMap.cellSize * CM_PER_PX);
     resizeCanvas();
+    lastLoadedMapName = file.name.replace(/\.csv$/i, '');
+    document.getElementById('mapName').value = lastLoadedMapName;
+    if (currentFileEl) currentFileEl.textContent = file.name;
+    alert(`Map "${file.name}" erfolgreich geladen.`);
   });
 }
 
@@ -385,20 +398,14 @@ if (editorMode) {
     generateMaze(gameMap, respawnTarget),
   );
 
-  document
-    .getElementById('saveMap')
-    .addEventListener('click', () => db.downloadMap(gameMap));
-
-
-
-  document
-    .getElementById('loadMapBtn')
-    .addEventListener('click', () => document.getElementById('loadMap').click());
-  document.getElementById('loadMap').addEventListener('change', loadMapFile);
   loadMapCsvBtn.addEventListener('click', () => loadMapCsvInput.click());
   saveMapCsvBtn.addEventListener('click', () => {
     const nameInput = document.getElementById('mapName');
     let n = nameInput.value.trim();
+    if (!n && lastLoadedMapName) {
+      n = lastLoadedMapName;
+      nameInput.value = n;
+    }
     if (!n) {
       n = db.getDefaultMapName();
       nameInput.value = n;
@@ -406,33 +413,35 @@ if (editorMode) {
     const csv = db.serializeCsvMap(gameMap);
     db.downloadMapCsv(gameMap, n + '.csv');
     db.uploadCsvMap(n, csv);
+    lastLoadedMapName = n;
+    if (currentFileEl) currentFileEl.textContent = n + '.csv';
   });
   loadMapCsvInput.addEventListener('change', loadMapCsv);
 
-
-  document.getElementById('setSizeBtn').addEventListener('click', () => {
-  const wCm = parseFloat(widthCmInput.value);
-  const hCm = parseFloat(heightCmInput.value);
-  const cm = parseFloat(cellCmInput.value);
-  if (isNaN(wCm) || isNaN(hCm) || wCm <= 0 || hCm <= 0) {
-    alert('Invalid size');
-    return;
-  }
-  const newCell = isNaN(cm) ? CELL_SIZE : cm / CM_PER_PX;
-  CELL_SIZE = newCell;
-  const cellCm = isNaN(cm) ? CELL_SIZE * CM_PER_PX : cm;
-  const cols = Math.max(1, Math.round(wCm / cellCm));
-  const rows = Math.max(1, Math.round(hCm / cellCm));
-  gameMap = new GameMap(cols, rows, CELL_SIZE);
-  obstacles = gameMap.obstacles;
-  targetMarker = null;
-  refreshCarObjects();
-  resizeCanvas();
-  pathCells = [];
-  generateBorder(gameMap, respawnTarget);
-  updateObstacleOptions();
-});
-
+  newMapBtn.addEventListener('click', () => {
+    const wCm = parseFloat(widthCmInput.value);
+    const hCm = parseFloat(heightCmInput.value);
+    const cm = parseFloat(cellCmInput.value);
+    if (isNaN(wCm) || isNaN(hCm) || wCm <= 0 || hCm <= 0) {
+      alert('Invalid size');
+      return;
+    }
+    const newCell = isNaN(cm) ? CELL_SIZE : cm / CM_PER_PX;
+    CELL_SIZE = newCell;
+    const cellCm = isNaN(cm) ? CELL_SIZE * CM_PER_PX : cm;
+    const cols = Math.max(1, Math.round(wCm / cellCm));
+    const rows = Math.max(1, Math.round(hCm / cellCm));
+    gameMap = new GameMap(cols, rows, CELL_SIZE);
+    obstacles = gameMap.obstacles;
+    targetMarker = null;
+    refreshCarObjects();
+    resizeCanvas();
+    pathCells = [];
+    generateBorder(gameMap, respawnTarget);
+    updateObstacleOptions();
+    lastLoadedMapName = '';
+    if (currentFileEl) currentFileEl.textContent = '';
+  });
 }
 
 calcPathBtn.addEventListener('click', () => {
