@@ -174,6 +174,125 @@ export class Car {
     return minT;
   }
 
+  // Extended intersection that also returns surface normal
+  rayRectIntersectionDetail(fx, fy, angle, rect) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    let minT = Infinity;
+    let normal = null;
+
+    if (Math.abs(cos) > 1e-6) {
+      let t = (rect.x - fx) / cos;
+      if (t >= 0) {
+        const y = fy + t * sin;
+        if (y >= rect.y && y <= rect.y + rect.h && t < minT) {
+          minT = t;
+          normal = [-1, 0];
+        }
+      }
+      t = (rect.x + rect.w - fx) / cos;
+      if (t >= 0) {
+        const y = fy + t * sin;
+        if (y >= rect.y && y <= rect.y + rect.h && t < minT) {
+          minT = t;
+          normal = [1, 0];
+        }
+      }
+    }
+
+    if (Math.abs(sin) > 1e-6) {
+      let t = (rect.y - fy) / sin;
+      if (t >= 0) {
+        const x = fx + t * cos;
+        if (x >= rect.x && x <= rect.x + rect.w && t < minT) {
+          minT = t;
+          normal = [0, -1];
+        }
+      }
+      t = (rect.y + rect.h - fy) / sin;
+      if (t >= 0) {
+        const x = fx + t * cos;
+        if (x >= rect.x && x <= rect.x + rect.w && t < minT) {
+          minT = t;
+          normal = [0, 1];
+        }
+      }
+    }
+
+    return { dist: minT, normal };
+  }
+
+  rayCircleIntersectionDetail(fx, fy, angle, circle) {
+    const cx = circle.x + circle.radius;
+    const cy = circle.y + circle.radius;
+    const r = circle.radius;
+    const vx = Math.cos(angle);
+    const vy = Math.sin(angle);
+    const ocx = fx - cx;
+    const ocy = fy - cy;
+    const b = 2 * (ocx * vx + ocy * vy);
+    const c = ocx * ocx + ocy * ocy - r * r;
+    const disc = b * b - 4 * c;
+    if (disc < 0) return { dist: Infinity, normal: null };
+    let t = (-b - Math.sqrt(disc)) / 2;
+    if (t < 0) t = (-b + Math.sqrt(disc)) / 2;
+    if (t < 0) return { dist: Infinity, normal: null };
+    const ix = fx + vx * t;
+    const iy = fy + vy * t;
+    const normal = [(ix - cx) / r, (iy - cy) / r];
+    return { dist: t, normal };
+  }
+
+  normAngle(a) {
+    while (a > Math.PI) a -= 2 * Math.PI;
+    while (a < -Math.PI) a += 2 * Math.PI;
+    return a;
+  }
+
+  castRayPath(fx, fy, angle, length, depth = 0) {
+    if (length <= 0 || depth > 3) return [];
+
+    let minDist = length;
+    let bestNormal = null;
+
+    for (const o of this.objects) {
+      let res;
+      if (o.radius != null) {
+        res = this.rayCircleIntersectionDetail(fx, fy, angle, o);
+      } else {
+        const rect = { x: o.x, y: o.y, w: o.size, h: o.size };
+        res = this.rayRectIntersectionDetail(fx, fy, angle, rect);
+      }
+      if (res.dist < minDist) {
+        minDist = res.dist;
+        bestNormal = res.normal;
+      }
+    }
+
+    const segment = { x: fx, y: fy, angle, length: minDist };
+
+    if (!bestNormal || minDist >= length) return [segment];
+
+    const ix = fx + Math.cos(angle) * minDist;
+    const iy = fy + Math.sin(angle) * minDist;
+
+    const nAngle = Math.atan2(bestNormal[1], bestNormal[0]);
+    let tAngle1 = nAngle + Math.PI / 2;
+    let tAngle2 = nAngle - Math.PI / 2;
+    const diff1 = Math.abs(this.normAngle(tAngle1 - angle));
+    const diff2 = Math.abs(this.normAngle(tAngle2 - angle));
+    const newAngle = diff1 < diff2 ? tAngle1 : tAngle2;
+
+    const rest = this.castRayPath(
+      ix + Math.cos(newAngle) * 0.1,
+      iy + Math.sin(newAngle) * 0.1,
+      newAngle,
+      length - minDist,
+      depth + 1,
+    );
+    return [segment, ...rest];
+  }
+
   drawKegel(x, y, length, angle, color, baseWidth) {
     x *= this.scale;
     y *= this.scale;
@@ -190,52 +309,29 @@ export class Car {
     const fx = cx + rx;
     const fy = cy + ry;
     const finalAngle = angle + this.rotation;
-    let maxLen = length;
-
-    for (const o of this.objects) {
-      if (o.radius != null) {
-        const r = o.radius;
-        const cxObj = o.x + r;
-        const cyObj = o.y + r;
-        const vx = Math.cos(finalAngle);
-        const vy = Math.sin(finalAngle);
-        const dxo = cxObj - fx;
-        const dyo = cyObj - fy;
-        const proj = dxo * vx + dyo * vy;
-        if (proj > 0 && proj < maxLen) {
-          const closestX = fx + vx * proj;
-          const closestY = fy + vy * proj;
-          const distSq = (cxObj - closestX) ** 2 + (cyObj - closestY) ** 2;
-          if (distSq <= r * r) {
-            const offset = Math.sqrt(r * r - distSq);
-            maxLen = proj - offset;
-          }
-        }
-      } else {
-        const rect = { x: o.x, y: o.y, w: o.size, h: o.size };
-        const len = this.rayRectIntersection(fx, fy, finalAngle, rect);
-        if (len < maxLen) maxLen = len;
-      }
+    const segments = this.castRayPath(fx, fy, finalAngle, length);
+    let total = 0;
+    this.ctx.fillStyle = color;
+    for (const seg of segments) {
+      const sx = seg.x;
+      const sy = seg.y;
+      const ex = sx + Math.cos(seg.angle) * seg.length;
+      const ey = sy + Math.sin(seg.angle) * seg.length;
+      const leftX = ex + (Math.cos(seg.angle + Math.PI / 2) * baseWidth) / 2;
+      const leftY = ey + (Math.sin(seg.angle + Math.PI / 2) * baseWidth) / 2;
+      const rightX = ex + (Math.cos(seg.angle - Math.PI / 2) * baseWidth) / 2;
+      const rightY = ey + (Math.sin(seg.angle - Math.PI / 2) * baseWidth) / 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(sx, sy);
+      this.ctx.lineTo(leftX, leftY);
+      this.ctx.lineTo(rightX, rightY);
+      this.ctx.closePath();
+      this.ctx.fill();
+      total += seg.length;
     }
 
-    const tipX = fx;
-    const tipY = fy;
-    const baseX = tipX + Math.cos(finalAngle) * maxLen;
-    const baseY = tipY + Math.sin(finalAngle) * maxLen;
-    const leftX = baseX + (Math.cos(finalAngle + Math.PI / 2) * baseWidth) / 2;
-    const leftY = baseY + (Math.sin(finalAngle + Math.PI / 2) * baseWidth) / 2;
-    const rightX = baseX + (Math.cos(finalAngle - Math.PI / 2) * baseWidth) / 2;
-    const rightY = baseY + (Math.sin(finalAngle - Math.PI / 2) * baseWidth) / 2;
-
-    this.ctx.fillStyle = color;
-    this.ctx.beginPath();
-    this.ctx.moveTo(tipX, tipY);
-    this.ctx.lineTo(leftX, leftY);
-    this.ctx.lineTo(rightX, rightY);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    return maxLen;
+    const first = segments.length ? segments[0].length : length;
+    return first;
   }
 
   draw(canvasWidth, canvasHeight) {
