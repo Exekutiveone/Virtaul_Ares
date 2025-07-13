@@ -31,6 +31,8 @@ const speedEl = document.getElementById('speed');
 const rpmEl = document.getElementById('rpm');
 const gyroEl = document.getElementById('gyro');
 const cellCmInput = document.getElementById('gridCellCm');
+const widthCmInput = document.getElementById('gridWidth');
+const heightCmInput = document.getElementById('gridHeight');
 
 const TELEMETRY_INTERVAL = 500; // ms
 let lastTelemetry = 0;
@@ -64,7 +66,11 @@ function sendTelemetry(front, rear, left, right) {
 }
 
 let CELL_SIZE = parseFloat(cellCmInput.value) / CM_PER_PX;
-let gameMap = new GameMap(20, 15, CELL_SIZE);
+const initialWidthCm = parseFloat(widthCmInput.value);
+const initialHeightCm = parseFloat(heightCmInput.value);
+const initialCols = Math.max(1, Math.round(initialWidthCm / parseFloat(cellCmInput.value)));
+const initialRows = Math.max(1, Math.round(initialHeightCm / parseFloat(cellCmInput.value)));
+let gameMap = new GameMap(initialCols, initialRows, CELL_SIZE);
 let previewSize;
 updateObstacleOptions();
 const params = new URLSearchParams(window.location.search);
@@ -79,8 +85,8 @@ if (csvMapUrl) {
     updateObstacleOptions();
     refreshCarObjects();
     pathCells = [];
-    document.getElementById('gridWidth').value = gameMap.cols;
-    document.getElementById('gridHeight').value = gameMap.rows;
+    widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
+    heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
   });
 }
@@ -291,8 +297,8 @@ function loadMapFile(e) {
     targetMarker = gameMap.target;
     refreshCarObjects();
     pathCells = [];
-    document.getElementById('gridWidth').value = gameMap.cols;
-    document.getElementById('gridHeight').value = gameMap.rows;
+    widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
+    heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
   });
 }
@@ -307,8 +313,8 @@ function loadMapCsv(e) {
     targetMarker = gameMap.target;
     refreshCarObjects();
     pathCells = [];
-    document.getElementById('gridWidth').value = gameMap.cols;
-    document.getElementById('gridHeight').value = gameMap.rows;
+    widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
+    heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
   });
 }
@@ -356,8 +362,8 @@ document.getElementById('loadMapDb').addEventListener('click', () => {
     targetMarker = gameMap.target;
     refreshCarObjects();
     pathCells = [];
-    document.getElementById('gridWidth').value = gameMap.cols;
-    document.getElementById('gridHeight').value = gameMap.rows;
+    widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
+    heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
   });
 });
@@ -410,16 +416,19 @@ document.getElementById('deleteMapBtn').addEventListener('click', () => {
 });
 
 document.getElementById('setSizeBtn').addEventListener('click', () => {
-  const w = parseInt(document.getElementById('gridWidth').value, 10);
-  const h = parseInt(document.getElementById('gridHeight').value, 10);
+  const wCm = parseFloat(widthCmInput.value);
+  const hCm = parseFloat(heightCmInput.value);
   const cm = parseFloat(cellCmInput.value);
-  if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+  if (isNaN(wCm) || isNaN(hCm) || wCm <= 0 || hCm <= 0) {
     alert('Invalid size');
     return;
   }
   const newCell = isNaN(cm) ? CELL_SIZE : cm / CM_PER_PX;
   CELL_SIZE = newCell;
-  gameMap = new GameMap(w, h, CELL_SIZE);
+  const cellCm = isNaN(cm) ? CELL_SIZE * CM_PER_PX : cm;
+  const cols = Math.max(1, Math.round(wCm / cellCm));
+  const rows = Math.max(1, Math.round(hCm / cellCm));
+  gameMap = new GameMap(cols, rows, CELL_SIZE);
   obstacles = gameMap.obstacles;
   targetMarker = null;
   refreshCarObjects();
