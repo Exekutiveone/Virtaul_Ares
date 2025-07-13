@@ -1,112 +1,168 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Labyrinth mit Task und Auto</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #111;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    #controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
-      padding: 10px;
-      background: #222;
-      color: white;
-    }
-    #controls > div {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    select, label, button {
-      padding: 10px;
-      font-size: 16px;
-      color: white;
-      background: #333;
-      border: none;
-    }
-    input[type="checkbox"] {
-      transform: scale(1.5);
-      margin-left: 10px;
-    }
-    .cone-display {
-      font-size: 16px;
-    }
-    #canvasContainer {
-      flex: 1;
-      overflow: hidden;
-      position: relative;
-    }
-    canvas {
-      display: block;
-      background: #fff;
-      transform-origin: top left;
-    }
-  </style>
-</head>
-<body>
-  <div id="controls">
-    <div id="editorTools">
-      <div>
-        <label>Typ:</label>
-        <select id="obstacleSize">
-          <option value="1">1x1</option>
-          <option value="2">2x2</option>
-          <option value="3">3x3</option>
-          <option value="target">Target (grüner Punkt)</option>
-        </select>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Labyrinth mit Task und Auto</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #111;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      #controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        padding: 10px;
+        background: #222;
+        color: white;
+      }
+      #controls > div {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      select,
+      label,
+      button {
+        padding: 10px;
+        font-size: 16px;
+        color: white;
+        background: #333;
+        border: none;
+      }
+      input[type='checkbox'] {
+        transform: scale(1.5);
+        margin-left: 10px;
+      }
+      .cone-display {
+        font-size: 16px;
+      }
+      #canvasContainer {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+      }
+      canvas {
+        display: block;
+        background: #fff;
+        transform-origin: top left;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <div id="editorTools">
+        <div>
+          <label>Typ:</label>
+          <select id="drawType">
+            <option value="obstacle">Quadrat</option>
+            <option value="target">Target (grüner Punkt)</option>
+          </select>
+          <label>Größe:</label>
+          <input
+            id="squareSize"
+            type="number"
+            min="1"
+            max="25"
+            value="1"
+            style="width: 60px"
+          />
+        </div>
+        <div>
+          <label>Entfernen</label>
+          <input type="checkbox" id="removeMode" />
+        </div>
+        <button id="generateMaze">Labyrinth generieren</button>
       </div>
-      <div>
-        <label>Entfernen</label>
-        <input type="checkbox" id="removeMode">
+      <div class="cone-display">Rot: <span id="redLength">0</span> px</div>
+      <div class="cone-display">Grün: <span id="greenLength">0</span> px</div>
+      <div class="cone-display">
+        Blau Links 1: <span id="blueLeft1">0</span> px
       </div>
-      <button id="generateMaze">Labyrinth generieren</button>
+      <div class="cone-display">
+        Blau Links 2: <span id="blueLeft2">0</span> px
+      </div>
+      <div class="cone-display">
+        Blau Rechts 1: <span id="blueRight1">0</span> px
+      </div>
+      <div class="cone-display">
+        Blau Rechts 2: <span id="blueRight2">0</span> px
+      </div>
+      <div class="cone-display">
+        Blau Hinten: <span id="blueBack">0</span> px
+      </div>
+      <div class="cone-display">
+        Geschwindigkeit: <span id="speed">0</span> px/s
+      </div>
+      <div class="cone-display">Drehzahl: <span id="rpm">0</span> RPM</div>
+      <div class="cone-display">Gyro: <span id="gyro">0</span>°</div>
+      <div id="editorTools2">
+        <label
+          >Size (cm):
+          <input
+            id="gridWidth"
+            type="number"
+            value="6400"
+            min="1"
+            style="width: 60px"
+          />
+          x
+          <input
+            id="gridHeight"
+            type="number"
+            value="4800"
+            min="1"
+            style="width: 60px"
+          />
+        </label>
+        <label
+          >Quadrat (cm):
+          <input
+            id="gridCellCm"
+            type="number"
+            value="5"
+            min="1"
+            max="25"
+            style="width: 60px"
+          />
+        </label>
+        <button id="setSizeBtn">Set Size</button>
+        <input type="text" id="mapName" placeholder="Map name" />
+        <button id="saveMap">Download Map</button>
+        <button id="loadMapBtn">Load Map</button>
+        <button id="loadMapCsvBtn">Load CSV</button>
+        <button id="saveMapCsv">Download CSV</button>
+        <input
+          type="file"
+          id="loadMapCsv"
+          style="display: none"
+          accept="text/csv"
+        />
+      </div>
+      <button id="calcPathBtn">Optimal Pathfinder</button>
+      <button id="toggleHitboxes">Hitboxen anzeigen</button>
+      <button id="findCarBtn">Auto finden</button>
+      <input
+        type="file"
+        id="loadMap"
+        style="display: none"
+        accept="application/json"
+      />
     </div>
-    <div class="cone-display">Rot: <span id="redLength">0</span> px</div>
-    <div class="cone-display">Grün: <span id="greenLength">0</span> px</div>
-    <div class="cone-display">Blau Links 1: <span id="blueLeft1">0</span> px</div>
-    <div class="cone-display">Blau Links 2: <span id="blueLeft2">0</span> px</div>
-    <div class="cone-display">Blau Rechts 1: <span id="blueRight1">0</span> px</div>
-    <div class="cone-display">Blau Rechts 2: <span id="blueRight2">0</span> px</div>
-    <div class="cone-display">Blau Hinten: <span id="blueBack">0</span> px</div>
-    <div class="cone-display">Geschwindigkeit: <span id="speed">0</span> px/s</div>
-    <div class="cone-display">Drehzahl: <span id="rpm">0</span> RPM</div>
-    <div class="cone-display">Gyro: <span id="gyro">0</span>°</div>
-    <div id="editorTools2">
-      <label>Size (cm):
-        <input id="gridWidth" type="number" value="6400" min="1" style="width:60px"> x
-        <input id="gridHeight" type="number" value="4800" min="1" style="width:60px">
-      </label>
-      <label>Quadrat (cm):
-        <input id="gridCellCm" type="number" value="5" min="1" max="25" style="width:60px">
-      </label>
-      <button id="setSizeBtn">Set Size</button>
-      <input type="text" id="mapName" placeholder="Map name">
-      <button id="saveMap">Download Map</button>
-      <button id="loadMapBtn">Load Map</button>
-      <button id="loadMapCsvBtn">Load CSV</button>
-      <button id="saveMapCsv">Download CSV</button>
-      <input type="file" id="loadMapCsv" style="display:none" accept="text/csv" />
+    <div id="canvasContainer">
+      <canvas id="canvas"></canvas>
     </div>
-    <button id="calcPathBtn">Optimal Pathfinder</button>
-    <button id="toggleHitboxes">Hitboxen anzeigen</button>
-    <button id="findCarBtn">Auto finden</button>
-    <input type="file" id="loadMap" style="display:none" accept="application/json">
-  </div>
-  <div id="canvasContainer">
-    <canvas id="canvas"></canvas>
-  </div>
-  <script type="module" src="{{ url_for('static', filename='src/main.js') }}"></script>
-
-</body>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='src/main.js') }}"
+    ></script>
+  </body>
 </html>
