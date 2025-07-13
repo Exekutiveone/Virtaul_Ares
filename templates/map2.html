@@ -54,9 +54,9 @@
     <div>
       <label>Typ:</label>
       <select id="obstacleSize">
-        <option value="40">40x40</option>
-        <option value="80">80x80</option>
-        <option value="120">120x120</option>
+        <option value="1">1x1</option>
+        <option value="2">2x2</option>
+        <option value="3">3x3</option>
         <option value="target">Target (grüner Punkt)</option>
       </select>
     </div>
@@ -78,6 +78,9 @@
     <label>Size:
       <input id="gridWidth" type="number" value="20" min="1" style="width:60px"> x
       <input id="gridHeight" type="number" value="15" min="1" style="width:60px">
+    </label>
+    <label>Quadrat (cm):
+      <input id="gridCellCm" type="number" value="10" min="1" max="25" style="width:60px">
     </label>
     <button id="setSizeBtn">Set Size</button>
     <input type="text" id="mapName" placeholder="Map name">
