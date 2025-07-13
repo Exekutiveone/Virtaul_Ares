@@ -1,8 +1,1 @@
-[
-  {
-    "file": "example.csv",
-    "name": "Beispiel",
-    "created": "2024-01-01T00:00:00Z",
-    "creator": "Admin"
-  }
-]
+[{"file": "example.csv", "name": "Beispiel", "created": "2024-01-01T00:00:00Z", "creator": "Admin"}, {"file": "2025-07-13T22-12-23-054Z.csv", "name": "2025-07-13T22-12-23-054Z", "created": "2025-07-13T22:12:23.063640", "creator": "Unknown"}]
