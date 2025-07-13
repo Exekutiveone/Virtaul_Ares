@@ -70,6 +70,27 @@ def csv_maps():
         return jsonify(maps_list)
 
 
+@app.route('/api/csv-maps/<filename>', methods=['PUT'])
+def update_csv_map(filename):
+    secure_name = secure_filename(filename)
+    path = os.path.join(CSV_MAPS_FOLDER, secure_name)
+    if not os.path.exists(path):
+        return jsonify({'error': 'not found'}), 404
+    data = request.get_json(force=True)
+    csv_data = data.get('csv')
+    if not csv_data:
+        return jsonify({'error': 'missing csv'}), 400
+    with open(path, 'w') as f:
+        f.write(csv_data)
+    maps_list = load_csv_map_list()
+    for entry in maps_list:
+        if entry['file'] == secure_name:
+            entry['created'] = datetime.utcnow().isoformat()
+            break
+    save_csv_map_list(maps_list)
+    return '', 204
+
+
 @app.route('/api/maps', methods=['GET', 'POST'])
 def maps_route():
     if request.method == 'POST':
