@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aStar } from '../src/autopilot/pathfinder.js';
-import { sendAction } from '../src/autopilot/send.js';
-import { GameMap } from '../src/map.js';
-import { Obstacle } from '../src/Obstacle.js';
+import { aStar } from '../static/src/autopilot/pathfinder.js';
+import { sendAction } from '../static/src/autopilot/send.js';
+import { GameMap } from '../static/src/map.js';
+import { Obstacle } from '../static/src/Obstacle.js';
 
 test('aStar finds direct path', () => {
   const gm = new GameMap(3, 1, 40);

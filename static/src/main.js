@@ -113,7 +113,7 @@ function respawnTarget() {
 }
 
 const carImage = new Image();
-carImage.src = 'extracted_foreground.png';
+carImage.src = '/static/extracted_foreground.png';
 const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
   startX: 100,
   startY: 100,
