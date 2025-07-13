@@ -361,6 +361,12 @@ function updateMouseFollow() {
     car.keys[diff > 0 ? 'ArrowRight' : 'ArrowLeft'] = true;
   } else if (dist > 10) {
     car.keys.ArrowUp = true;
+  } else {
+    // Stop immediately when close enough to the target
+    car.velocity = 0;
+    car.angularVelocity = 0;
+    car.acceleration = 0;
+    car.angularAcceleration = 0;
   }
 }
 
