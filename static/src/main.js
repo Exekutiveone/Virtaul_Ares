@@ -65,6 +65,7 @@ function sendTelemetry(front, rear, left, right) {
 
 let CELL_SIZE = parseFloat(cellCmInput.value) / CM_PER_PX;
 let gameMap = new GameMap(20, 15, CELL_SIZE);
+let previewSize;
 updateObstacleOptions();
 const params = new URLSearchParams(window.location.search);
 const csvMapUrl = params.get('map');
@@ -84,6 +85,7 @@ if (csvMapUrl) {
   });
 }
 let obstacles = gameMap.obstacles;
+previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
 let previewSize = dropdown.value === 'target' ? CELL_SIZE : parseInt(dropdown.value) * CELL_SIZE;
 let showHitboxes = false;
 let isDragging = false;
