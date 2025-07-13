@@ -12,8 +12,13 @@ This repository contains a small browser based car simulator. The page `map2.htm
 
    Then navigate to `http://localhost:8000/map2.html`.
 
-2. Make sure the following backend services are available:
+2. Start the Flask backend which provides the required API endpoints:
 
+   ```bash
+   python server.py
+   ```
+
+   This exposes the following services:
    - `http://127.0.0.1:5000/api/maps` for storing and retrieving maps.
    - `http://127.0.0.1:5001/api/car` for telemetry data from the simulator.
    - `http://localhost:5002/api/control` for remote control commands.
