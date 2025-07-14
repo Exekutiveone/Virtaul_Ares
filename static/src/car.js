@@ -82,6 +82,7 @@ export class Car {
     this.maxSteering = (70 * Math.PI) / 180;
     this.steerRate = 0.02;
     this.wheelBase = 50;
+    this.angleOverride = false;
   }
 
   reset() {
@@ -98,32 +99,36 @@ export class Car {
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
   }
 
-  setKeysFromAction(action) {
   setKeysFromAction(action, value = null) {
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
     if (action === 'left') {
       if (typeof value === 'number') {
+        this.angleOverride = true;
         this.steeringAngle = Math.max(
           -this.maxSteering,
           Math.min(this.maxSteering, (-value * Math.PI) / 180),
         );
       } else {
+        this.angleOverride = false;
         this.keys.ArrowLeft = true;
       }
       return;
     }
     if (action === 'right') {
       if (typeof value === 'number') {
+        this.angleOverride = true;
         this.steeringAngle = Math.max(
           -this.maxSteering,
           Math.min(this.maxSteering, (value * Math.PI) / 180),
         );
       } else {
+        this.angleOverride = false;
         this.keys.ArrowRight = true;
       }
       return;
     }
     if (action === 'straight') {
+      this.angleOverride = false;
       this.steeringAngle = 0;
       return;
     }
@@ -495,10 +500,12 @@ export class Car {
         this.maxSteering,
         this.steeringAngle + this.steerRate,
       );
-    else if (this.steeringAngle > 0)
-      this.steeringAngle = Math.max(0, this.steeringAngle - this.steerRate);
-    else if (this.steeringAngle < 0)
-      this.steeringAngle = Math.min(0, this.steeringAngle + this.steerRate);
+    else if (!this.angleOverride) {
+      if (this.steeringAngle > 0)
+        this.steeringAngle = Math.max(0, this.steeringAngle - this.steerRate);
+      else if (this.steeringAngle < 0)
+        this.steeringAngle = Math.min(0, this.steeringAngle + this.steerRate);
+    }
 
     this.velocity += this.acceleration;
     this.velocity = Math.max(
