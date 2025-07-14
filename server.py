@@ -107,23 +107,31 @@ def sequences_api():
         if fmt == 'ros':
             if not filename.endswith('.ros'):
                 filename += '.ros'
+        elif fmt == 'json':
+            if not filename.endswith('.json'):
+                filename += '.json'
         else:
             if not filename.endswith('.csv'):
                 filename += '.csv'
-        lines = []
-        for s in steps:
-            if 'line' in s:
-                lines.append(s['line'])
-            elif 'repeat' in s:
-                lines.append(f"for {s['repeat']} {s['action']} {s['duration']}")
-            else:
-                if fmt == 'ros':
-                    lines.append(f"{s['action']} {s['duration']}")
-                else:
-                    lines.append(f"{s['action']},{s['duration']}")
         os.makedirs(SEQUENCE_FOLDER, exist_ok=True)
-        with open(os.path.join(SEQUENCE_FOLDER, filename), 'w') as f:
-            f.write("\n".join(lines))
+        path = os.path.join(SEQUENCE_FOLDER, filename)
+        if fmt == 'json':
+            with open(path, 'w') as f:
+                json.dump(steps, f)
+        else:
+            lines = []
+            for s in steps:
+                if 'line' in s:
+                    lines.append(s['line'])
+                elif 'repeat' in s:
+                    lines.append(f"for {s['repeat']} {s['action']} {s['duration']}")
+                else:
+                    if fmt == 'ros':
+                        lines.append(f"{s['action']} {s['duration']}")
+                    else:
+                        lines.append(f"{s['action']},{s['duration']}")
+            with open(path, 'w') as f:
+                f.write("\n".join(lines))
         lst = load_seq_list()
         lst.append({'file': filename, 'name': name, 'created': datetime.utcnow().isoformat(), 'format': fmt})
         save_seq_list(lst)
