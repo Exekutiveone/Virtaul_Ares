@@ -11,6 +11,7 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 # In-memory storage for maps and telemetry
 maps = {}
 control_action = None
+control_value = None
 telemetry_log = []
 latest_telemetry = None
 current_map = None
@@ -307,14 +308,20 @@ def map_detail(map_id):
 
 @app.route('/api/control', methods=['GET', 'POST'])
 def control():
-    global control_action
+    global control_action, control_value
     if request.method == 'POST':
-        control_action = request.get_json(force=True).get('action')
+        data = request.get_json(force=True)
+        control_action = data.get('action')
+        control_value = data.get('value')
         return '', 204
     else:
         action = control_action
+        value = control_value
         control_action = None
-        return jsonify({'action': action})
+        control_value = None
+        if value is None:
+            return jsonify({'action': action})
+        return jsonify({'action': action, 'value': value})
 
 @app.route('/api/car', methods=['GET', 'POST'])
 def car():
