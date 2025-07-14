@@ -1,5 +1,7 @@
 const canvas = document.getElementById('mapCanvas');
 const ctx = canvas.getContext('2d');
+const slamCanvas = document.getElementById('slamMapCanvas');
+const slamCtx = slamCanvas.getContext('2d');
 
 const CELL = 10; // pixel size of each grid cell
 const cols = Math.floor(canvas.width / CELL);
@@ -70,5 +72,28 @@ async function refresh() {
   drawGrid();
 }
 
+async function updateSlamMap() {
+  const res = await fetch('/api/slam-map');
+  if (!res.ok) return;
+  const data = await res.json();
+  const w = data.gridSize.width;
+  const h = data.gridSize.height;
+  if (!w || !h) return;
+  const cell = Math.floor(Math.min(slamCanvas.width / w, slamCanvas.height / h));
+  slamCanvas.width = w * cell;
+  slamCanvas.height = h * cell;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const val = data.cells[y][x];
+      if (val === 0) slamCtx.fillStyle = '#cccccc';
+      else if (val === 1) slamCtx.fillStyle = '#ffffff';
+      else if (val === 2) slamCtx.fillStyle = '#000000';
+      slamCtx.fillRect(x * cell, y * cell, cell, cell);
+    }
+  }
+}
+
 setInterval(refresh, 1000);
+setInterval(updateSlamMap, 1000);
 refresh();
+updateSlamMap();
