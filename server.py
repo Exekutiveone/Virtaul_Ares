@@ -123,12 +123,22 @@ def sequences_api():
         return jsonify(load_seq_list())
 
 
-@app.route('/api/csv-maps/<filename>', methods=['PUT'])
+@app.route('/api/csv-maps/<filename>', methods=['PUT', 'DELETE'])
 def update_csv_map(filename):
     secure_name = secure_filename(filename)
     path = os.path.join(CSV_MAPS_FOLDER, secure_name)
+
+    if request.method == 'DELETE':
+        if os.path.exists(path):
+            os.remove(path)
+        maps_list = load_csv_map_list()
+        maps_list = [m for m in maps_list if m['file'] != secure_name]
+        save_csv_map_list(maps_list)
+        return '', 204
+
     if not os.path.exists(path):
         return jsonify({'error': 'not found'}), 404
+
     data = request.get_json(force=True)
     csv_data = data.get('csv')
     if not csv_data:
