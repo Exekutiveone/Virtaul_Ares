@@ -15,6 +15,7 @@ async function loadList() {
       <div class="buttons">
         <button class="play">Spielen</button>
         <button class="edit">Bearbeiten</button>
+        <button class="rename">Umbenennen</button>
         <button class="delete">Löschen</button>
       </div>`;
     grid.appendChild(tile);
@@ -33,6 +34,16 @@ async function loadList() {
     tile.querySelector('.edit').addEventListener('click', () => {
       window.location.href =
         '/map2?map=/static/maps/' + encodeURIComponent(m.file) + '&editor=1';
+    });
+    tile.querySelector('.rename').addEventListener('click', async () => {
+      const newName = prompt('Neuer Name:', m.name);
+      if (!newName) return;
+      await fetch('/api/csv-maps/' + encodeURIComponent(m.file), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+      loadList();
     });
     tile.querySelector('.delete').addEventListener('click', async () => {
       if (!confirm('Diese Karte wirklich löschen?')) return;
