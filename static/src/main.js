@@ -24,6 +24,7 @@ const slamCheckbox = document.getElementById('slamMode');
 const slamCanvas = document.getElementById('slamCanvas');
 const slamCtx = slamCanvas.getContext('2d');
 let slamMode = false;
+let prevCarRect = null;
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
 const connectCornersBtn = document.getElementById('connectCorners');
@@ -74,9 +75,12 @@ if (slamCheckbox) {
       slamCanvas.style.display = 'block';
       slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
       slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+      prevCarRect = null;
+      revealCar();
     } else {
       slamCanvas.style.display = 'none';
       slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
+      prevCarRect = null;
     }
   });
 }
@@ -369,6 +373,8 @@ function resizeCanvas() {
   if (slamMode) {
     slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
     slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+    prevCarRect = null;
+    revealCar();
   }
   updateTransform();
 }
@@ -453,6 +459,19 @@ function revealCone(x, y, length, angle, baseWidth) {
   slamCtx.globalCompositeOperation = 'destination-out';
   car.drawKegel(x, y, length, angle, '#000', baseWidth, slamCtx);
   slamCtx.restore();
+}
+
+function revealCar() {
+  const bbox = car.getBoundingBox(car.posX, car.posY);
+  if (prevCarRect) {
+    slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+    slamCtx.fillRect(prevCarRect.x, prevCarRect.y, prevCarRect.w, prevCarRect.h);
+  }
+  slamCtx.save();
+  slamCtx.globalCompositeOperation = 'destination-out';
+  slamCtx.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
+  slamCtx.restore();
+  prevCarRect = bbox;
 }
 
 function updatePreview() {
@@ -671,6 +690,7 @@ function loop() {
   const br2 = car.drawKegel(97, 7, 150, -Math.PI / 2, 'blue', 8);
   const bb = car.drawKegel(143, 37, 150, 0, 'blue', 8);
   if (slamMode) {
+    revealCar();
     revealCone(18, 40, 700, Math.PI, 6);
     revealCone(45, 40, 400, Math.PI, 140);
     for (const [x, y] of [
