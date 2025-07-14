@@ -718,6 +718,7 @@ function loop() {
   }
   car.showHitbox = showHitboxes;
   car.update(canvas.width, canvas.height);
+  autoFollowCar();
   if (targetMarker) {
     const bboxCurrent = car.getBoundingBox(car.posX, car.posY);
     if (
@@ -929,6 +930,25 @@ function centerOnCar(radiusCm = 500) {
   translateY = Math.max(0, Math.min(translateY, canvas.height - viewH));
   zoomMode = true;
   updateTransform();
+}
+
+function autoFollowCar(margin = 50) {
+  const viewH = canvasContainer.clientHeight / zoomScale;
+  if (canvas.height <= viewH) return;
+  const top = (car.posY - translateY) * zoomScale;
+  const bottom = (car.posY + car.imgHeight - translateY) * zoomScale;
+  if (bottom > canvasContainer.clientHeight - margin) {
+    translateY =
+      car.posY +
+      car.imgHeight -
+      (canvasContainer.clientHeight - margin) / zoomScale;
+    translateY = Math.min(translateY, canvas.height - viewH);
+    updateTransform();
+  } else if (top < margin) {
+    translateY = car.posY - margin / zoomScale;
+    translateY = Math.max(0, translateY);
+    updateTransform();
+  }
 }
 
 findCarBtn.addEventListener('click', () => centerOnCar(500));
