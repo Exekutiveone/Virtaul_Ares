@@ -66,7 +66,6 @@ if (controlModeSelect) {
 }
 
 if (slamCheckbox) {
-  if (!editorMode) slamCheckbox.parentElement.style.display = 'none';
   slamCheckbox.addEventListener('change', () => {
     slamMode = slamCheckbox.checked;
     if (slamMode) {
