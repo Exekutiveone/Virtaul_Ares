@@ -79,6 +79,11 @@ export class Car {
     this.rightDistance = Infinity;
     this.rearDistance = Infinity;
 
+    // Fixed driving speed in px/s. Null means manual control.
+    this.fixedSpeed = null;
+    // Minimum distance to obstacles in pixels (25 cm).
+    this.safeDistancePx = 25 / 2;
+
     // Steering state in radians
     this.steeringAngle = 0;
     this.maxSteering = (70 * Math.PI) / 180;
@@ -482,15 +487,33 @@ export class Car {
   }
 
   update(canvasWidth, canvasHeight) {
-    if (this.keys.ArrowUp) this.acceleration = this.accelRate;
-    else if (this.keys.ArrowDown) this.acceleration = -this.accelRate;
-    else
-      this.acceleration =
-        this.velocity > 0
-          ? -this.decelRate
-          : this.velocity < 0
-            ? this.decelRate
-            : 0;
+    if (this.fixedSpeed != null) {
+      this.acceleration = 0;
+      this.velocity = this.fixedSpeed / 60;
+    } else {
+      if (this.keys.ArrowUp) this.acceleration = this.accelRate;
+      else if (this.keys.ArrowDown) this.acceleration = -this.accelRate;
+      else
+        this.acceleration =
+          this.velocity > 0
+            ? -this.decelRate
+            : this.velocity < 0
+              ? this.decelRate
+              : 0;
+
+      this.velocity += this.acceleration;
+      this.velocity = Math.max(
+        -this.maxSpeed,
+        Math.min(this.maxSpeed, this.velocity),
+      );
+
+      if (
+        Math.abs(this.velocity) < 0.01 &&
+        !this.keys.ArrowUp &&
+        !this.keys.ArrowDown
+      )
+        this.velocity = 0;
+    }
 
     if (this.keys.ArrowLeft)
       this.steeringAngle = Math.max(
@@ -509,18 +532,19 @@ export class Car {
         this.steeringAngle = Math.min(0, this.steeringAngle + this.steerRate);
     }
 
-    this.velocity += this.acceleration;
-    this.velocity = Math.max(
-      -this.maxSpeed,
-      Math.min(this.maxSpeed, this.velocity),
-    );
-
     if (
-      Math.abs(this.velocity) < 0.01 &&
-      !this.keys.ArrowUp &&
-      !this.keys.ArrowDown
-    )
-      this.velocity = 0;
+      this.velocity > 0 &&
+      this.frontDistance - this.velocity <= this.safeDistancePx
+    ) {
+      this.velocity = Math.max(0, this.frontDistance - this.safeDistancePx);
+      this.acceleration = 0;
+    } else if (
+      this.velocity < 0 &&
+      this.rearDistance + this.velocity <= this.safeDistancePx
+    ) {
+      this.velocity = Math.min(0, -(this.rearDistance - this.safeDistancePx));
+      this.acceleration = 0;
+    }
 
     const rotChange =
       this.velocity !== 0
