@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Virtual Ares - Abläufe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+    }
+    #seqGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .tile {
+      background: #222;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .buttons {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    button {
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;padding:10px 0;">Abläufe</h1>
+  <div id="seqGrid"></div>
+  <script type="module" src="{{ url_for('static', filename='src/sequenceList.js') }}"></script>
+</body>
+</html>

@@ -376,9 +376,32 @@ if (addCallBtn) addCallBtn.addEventListener('click', () => {
   rootList.appendChild(createCallNode());
 });
 
-loadSequenceList();
+await loadSequenceList();
 initDrag(rootList);
 rootList.appendChild(createActionNode());
+
+const params = new URLSearchParams(window.location.search);
+const fileParam = params.get('file');
+if (fileParam) {
+  const entry = sequenceList.find((s) => s.file === fileParam);
+  if (entry) {
+    const res = await fetch('/static/sequences/' + encodeURIComponent(entry.file));
+    if (res.ok) {
+      let steps;
+      const fmt = entry.format || (entry.file.endsWith('.json') ? 'json' : entry.file.endsWith('.ros') ? 'ros' : 'csv');
+      if (fmt === 'json') {
+        steps = await res.json();
+      } else {
+        const text = await res.text();
+        steps = parseTextSequence(text, fmt);
+      }
+      document.getElementById('seqName').value = entry.name;
+      document.getElementById('seqFormat').value = fmt;
+      rootList.innerHTML = '';
+      buildSteps(steps, rootList);
+    }
+  }
+}
 
 if (loadBtn)
   loadBtn.addEventListener('click', async () => {
