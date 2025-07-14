@@ -10,6 +10,50 @@ const loadSelect = document.getElementById('seqLoadSelect');
 
 let sequenceList = [];
 
+function parseTextSequence(text, format) {
+  const steps = [];
+  const lines = text.trim().split(/\r?\n/);
+  for (const line of lines) {
+    if (!line) continue;
+    const ifMatch = line.match(
+      /^if\s+(\w+)\s*(<=|>=|==|!=|<|>)\s*(\d+(?:\.\d+)?)\s+then\s+(\w+)\s+(\d+(?:\.\d+)?)\s+else\s+(\w+)\s+(\d+(?:\.\d+)?)/i,
+    );
+    if (ifMatch) {
+      const [, sensor, op, val, a1, d1, a2, d2] = ifMatch;
+      steps.push({
+        if: {
+          sensor,
+          op,
+          value: parseFloat(val),
+          then: [{ action: a1, duration: parseFloat(d1) }],
+          else: [{ action: a2, duration: parseFloat(d2) }],
+        },
+      });
+      continue;
+    }
+    const forMatch = line.match(/^for\s+(\d+)\s+(\w+)\s+(\d+(?:\.\d+)?)/i);
+    if (forMatch) {
+      const [, cnt, act, dur] = forMatch;
+      steps.push({
+        loop: {
+          repeat: parseInt(cnt),
+          steps: [{ action: act, duration: parseFloat(dur) }],
+        },
+      });
+      continue;
+    }
+    let action, dur;
+    if (format === 'csv') {
+      [action, dur] = line.split(',');
+    } else {
+      [action, dur] = line.split(/\s+/);
+    }
+    dur = parseFloat(dur);
+    if (action && !isNaN(dur)) steps.push({ action, duration: dur });
+  }
+  return steps;
+}
+
 async function loadSequenceList() {
   const res = await fetch('/api/sequences');
   if (res.ok) {
@@ -340,16 +384,20 @@ if (loadBtn)
   loadBtn.addEventListener('click', async () => {
     const opt = loadSelect.options[loadSelect.selectedIndex];
     if (!opt || !opt.value) return;
-    if (opt.dataset.format !== 'json' && !opt.value.endsWith('.json')) {
-      alert('Nur JSON Sequenzen können geladen werden');
-      return;
-    }
     const res = await fetch('/static/sequences/' + encodeURIComponent(opt.value));
     if (!res.ok) {
       alert('Fehler beim Laden');
       return;
     }
-    const steps = await res.json();
+    let steps;
+    if (opt.dataset.format === 'json' || opt.value.endsWith('.json')) {
+      steps = await res.json();
+    } else {
+      const text = await res.text();
+      steps = parseTextSequence(text, opt.dataset.format);
+    }
+    document.getElementById('seqName').value = opt.textContent;
+    document.getElementById('seqFormat').value = opt.dataset.format || 'csv';
     rootList.innerHTML = '';
     buildSteps(steps, rootList);
   });

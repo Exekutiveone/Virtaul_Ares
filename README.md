@@ -80,3 +80,7 @@ modularizing complex behaviours.
 Existing sequences saved in JSON format can be loaded back into the editor
 through the new **Vorhanden** drop-down and the **Laden** button. This makes it
 possible to edit and extend previously created command sequences.
+
+Sequences saved as CSV or ROS files can also be loaded. When imported, they are
+converted into simple action lists so they can be further adjusted and saved
+again, e.g. in JSON format for advanced features.
