@@ -126,6 +126,23 @@ export class Car {
     };
   }
 
+  pointInHitbox(px, py) {
+    const cx = this.posX + this.imgWidth / 2;
+    const cy = this.posY + this.imgHeight / 2;
+    const cos = Math.cos(-this.rotation);
+    const sin = Math.sin(-this.rotation);
+    const localX = (px - cx) * cos - (py - cy) * sin + this.imgWidth / 2;
+    const localY = (px - cx) * sin + (py - cy) * cos + this.imgHeight / 2;
+    const offsetX = (this.imgWidth - this.hitboxWidth) / 2;
+    const offsetY = (this.imgHeight - this.hitboxHeight) / 2;
+    return (
+      localX >= offsetX &&
+      localX <= offsetX + this.hitboxWidth &&
+      localY >= offsetY &&
+      localY <= offsetY + this.hitboxHeight
+    );
+  }
+
   drawHitbox() {
     const corners = this.getRotatedCorners(this.posX, this.posY);
     this.ctx.strokeStyle = 'red';
