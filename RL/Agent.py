@@ -18,6 +18,9 @@ class DummyEnv:
         self.night_mode = False
         self.map_index = 0
         self.map_switched = False
+        self.stalled = False
+        self.last_move_time = time.time()
+        self.last_position = 0
         self.reset()
 
     def reset(self):
@@ -29,12 +32,23 @@ class DummyEnv:
         self.gyro = 0
         self.night_mode = False
         self.map_switched = False
+        self.stalled = False
+        self.last_move_time = time.time()
+        self.last_position = self.position
 
     def get_state(self):
         dist_front = max(self.goal - self.position, 0)
         dist_left = 1
         dist_right = 1
         coverage = self.position / self.goal if self.goal else 0.0
+        # update stall timer based on position
+        if self.position != self.last_position:
+            self.last_move_time = time.time()
+            self.last_position = self.position
+        elif time.time() - self.last_move_time > 10:
+            self.reset()
+            self.done = True
+            self.stalled = True
         # State now includes map coverage
         return [
             dist_front,
@@ -71,6 +85,9 @@ class DummyEnv:
             self.done = True
 
     def compute_reward(self, state, next_state):
+        if self.stalled:
+            self.stalled = False
+            return -10
         coverage_gain = next_state[6] - state[6]
         if self.done:
             reward = 10
@@ -96,11 +113,15 @@ class ServerEnv:
         self.done = False
         self.night_mode = False
         self.map_switched = False
+        self.stalled = False
+        self.last_move_time = time.time()
 
     def reset(self):
         self.done = False
         self.night_mode = False
         self.map_switched = False
+        self.stalled = False
+        self.last_move_time = time.time()
         return self.get_state()
 
     def get_state(self):
@@ -116,6 +137,25 @@ class ServerEnv:
         speed = data.get("speed", 0)
         gyro = data.get("gyro", 0)
         rpm = data.get("rpm", 0)
+
+        # update stall detection based on speed
+        if speed > 0:
+            self.last_move_time = time.time()
+        elif time.time() - self.last_move_time > 10:
+            try:
+                requests.post(
+                    f"{self.base_url}/api/control",
+                    json={"action": "restart"},
+                    timeout=5,
+                )
+            except Exception:
+                pass
+            self.reset()
+            self.stalled = True
+            self.done = True
+            speed = 0
+            coverage = 0.0
+            return [dist_front, dist_left, dist_right, speed, gyro, rpm, coverage]
 
         # Retrieve SLAM map to compute coverage
         try:
@@ -165,6 +205,9 @@ class ServerEnv:
             pass
 
     def compute_reward(self, state, next_state):
+        if self.stalled:
+            self.stalled = False
+            return -10
         coverage_gain = next_state[6] - state[6]
         if next_state[0] < 20:
             reward = -5
@@ -202,7 +245,11 @@ class DQNAgent:
         if np.random.rand() <= self.epsilon:
             return random.randrange(ACTION_SIZE)
         q_values = self.model.predict(np.array([state]), verbose=0)
-        return np.argmax(q_values[0])
+        action = np.argmax(q_values[0])
+        # prevent switching maps too early
+        if ACTIONS[action] == "next_map" and state[6] < 0.5:
+            return ACTIONS.index("stop")
+        return action
 
     def remember(self, s, a, r, s_, done):
         self.memory.append((s, a, r, s_, done))

@@ -162,6 +162,8 @@ async function pollControl() {
     if (!data.action) return;
     if (data.action === 'next_map') {
       loadMapByIndex(currentMapIndex + 1);
+    } else if (data.action === 'restart') {
+      resetMap();
     } else {
       car.setKeysFromAction(data.action);
     }
