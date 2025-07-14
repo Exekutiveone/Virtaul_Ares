@@ -119,17 +119,25 @@ def sequences_api():
             with open(path, 'w') as f:
                 json.dump(steps, f)
         else:
+            if any(hasattr(s, 'get') and (
+                'loop' in s or 'while' in s or 'if' in s or 'call' in s)
+                for s in steps):
+                return jsonify({'error': 'Loops and conditions require JSON format'}), 400
             lines = []
             for s in steps:
+                if not isinstance(s, dict):
+                    continue
                 if 'line' in s:
                     lines.append(s['line'])
-                elif 'repeat' in s:
+                elif 'repeat' in s and 'action' in s and 'duration' in s:
                     lines.append(f"for {s['repeat']} {s['action']} {s['duration']}")
-                else:
+                elif 'action' in s and 'duration' in s:
                     if fmt == 'ros':
                         lines.append(f"{s['action']} {s['duration']}")
                     else:
                         lines.append(f"{s['action']},{s['duration']}")
+                else:
+                    return jsonify({'error': 'Invalid step format'}), 400
             with open(path, 'w') as f:
                 f.write("\n".join(lines))
         lst = load_seq_list()
