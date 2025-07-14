@@ -5,6 +5,7 @@ import random
 import time
 import csv
 from datetime import datetime
+import requests
 
 ACTIONS = ["forward", "left", "right", "backward", "stop"]
 STATE_SIZE = 6
@@ -54,6 +55,49 @@ class DummyEnv:
             return state[0] - next_state[0]
 
 
+class ServerEnv:
+    """Environment that communicates with the Flask server."""
+
+    def __init__(self, base_url="http://127.0.0.1:5000"):
+        self.base_url = base_url.rstrip("/")
+        self.done = False
+
+    def reset(self):
+        self.done = False
+        return self.get_state()
+
+    def get_state(self):
+        try:
+            res = requests.get(f"{self.base_url}/api/car", timeout=5)
+            data = res.json()
+        except Exception:
+            data = {}
+        dist = data.get("distances", {})
+        dist_front = dist.get("front", 0)
+        dist_left = dist.get("left", 0)
+        dist_right = dist.get("right", 0)
+        speed = data.get("speed", 0)
+        gyro = data.get("gyro", 0)
+        rpm = data.get("rpm", 0)
+        return [dist_front, dist_left, dist_right, speed, gyro, rpm]
+
+    def send_action(self, action_index):
+        action = ACTIONS[action_index]
+        try:
+            requests.post(
+                f"{self.base_url}/api/control",
+                json={"action": action},
+                timeout=5,
+            )
+        except Exception:
+            pass
+
+    def compute_reward(self, state, next_state):
+        if next_state[0] < 20:
+            return -5
+        return state[0] - next_state[0]
+
+
 class DQNAgent:
     def __init__(self):
         self.memory = deque(maxlen=2000)
@@ -100,7 +144,16 @@ logger = csv.writer(logfile)
 logger.writerow(["episode", "step", "timestamp", "action", "state", "reward", "done", "epsilon"])
 
 # Hauptloop
+import sys
+
 env = DummyEnv()
+if "--server" in sys.argv:
+    idx = sys.argv.index("--server")
+    base = "http://127.0.0.1:5000"
+    if idx + 1 < len(sys.argv):
+        base = sys.argv[idx + 1]
+    env = ServerEnv(base)
+
 agent = DQNAgent()
 
 for episode in range(1000):
