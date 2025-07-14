@@ -4,7 +4,7 @@ import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
 import { generateMaze, generateBorder } from './mapGenerator.js';
 import * as db from './db.js';
-import { followPath, aStar } from './autopilot/index.js';
+import { followPath, aStar, sendAction } from './autopilot/index.js';
 import { CONTROL_API_URL, TELEMETRY_API_URL } from './config.js';
 
 // 1 Pixel entspricht dieser Anzahl Zentimeter
@@ -24,6 +24,8 @@ const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
 const loadMapCsvInput = document.getElementById('loadMapCsv');
 const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
+const sequenceSelect = document.getElementById('sequenceSelect');
+const runSequenceBtn = document.getElementById('runSequenceBtn');
 const controlModeSelect = document.getElementById('controlMode');
 let controlMode = controlModeSelect ? controlModeSelect.value : 'wasd';
 let mouseTarget = null;
@@ -93,6 +95,47 @@ async function pollControl() {
     if (data.action) car.setKeysFromAction(data.action);
   } catch (err) {
     console.error('pollControl failed', err);
+  }
+}
+
+async function loadSequences() {
+  if (!sequenceSelect) return;
+  sequenceSelect.innerHTML = '';
+  const res = await fetch('/api/sequences');
+  if (!res.ok) return;
+  const list = await res.json();
+  for (const s of list) {
+    const opt = document.createElement('option');
+    opt.value = s.file;
+    opt.textContent = s.name;
+    opt.dataset.format = s.format || 'csv';
+    sequenceSelect.appendChild(opt);
+  }
+}
+
+async function runSequence(file, format) {
+  if (!file) return;
+  const res = await fetch('/static/sequences/' + encodeURIComponent(file));
+  if (!res.ok) return;
+  const text = await res.text();
+  const steps = [];
+  const lines = text.trim().split(/\r?\n/);
+  for (const line of lines) {
+    if (!line) continue;
+    let action, dur;
+    if (format === 'csv') {
+      [action, dur] = line.split(',');
+    } else {
+      [action, dur] = line.split(/\s+/);
+    }
+    dur = parseFloat(dur);
+    if (action && !isNaN(dur)) steps.push({ action, duration: dur });
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (const step of steps) {
+    await sendAction(car, step.action);
+    await sleep(step.duration * 1000);
+    await sendAction(car, 'stop');
   }
 }
 
@@ -616,6 +659,12 @@ findCarBtn.addEventListener('click', () => centerOnCar(500));
 carImage.onload = () => {
   resizeCanvas();
   updateObstacleOptions();
+  loadSequences();
+  if (runSequenceBtn)
+    runSequenceBtn.addEventListener('click', () => {
+      const opt = sequenceSelect.options[sequenceSelect.selectedIndex];
+      if (opt) runSequence(opt.value, opt.dataset.format);
+    });
   setInterval(pollControl, CONTROL_POLL_INTERVAL);
   pollControl();
   loop();
