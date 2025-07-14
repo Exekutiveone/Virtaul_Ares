@@ -317,7 +317,7 @@ export class Car {
     return [segment, ...rest];
   }
 
-  drawKegel(x, y, length, angle, color, baseWidth) {
+  drawKegel(x, y, length, angle, color, baseWidth, ctx = this.ctx) {
     x *= this.scale;
     y *= this.scale;
     baseWidth *= this.scale;
@@ -335,7 +335,7 @@ export class Car {
     const finalAngle = angle + this.rotation;
     const segments = this.castRayPath(fx, fy, finalAngle, length);
     let total = 0;
-    this.ctx.fillStyle = color;
+    ctx.fillStyle = color;
     for (const seg of segments) {
       const sx = seg.x;
       const sy = seg.y;
@@ -345,12 +345,12 @@ export class Car {
       const leftY = ey + (Math.sin(seg.angle + Math.PI / 2) * baseWidth) / 2;
       const rightX = ex + (Math.cos(seg.angle - Math.PI / 2) * baseWidth) / 2;
       const rightY = ey + (Math.sin(seg.angle - Math.PI / 2) * baseWidth) / 2;
-      this.ctx.beginPath();
-      this.ctx.moveTo(sx, sy);
-      this.ctx.lineTo(leftX, leftY);
-      this.ctx.lineTo(rightX, rightY);
-      this.ctx.closePath();
-      this.ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(leftX, leftY);
+      ctx.lineTo(rightX, rightY);
+      ctx.closePath();
+      ctx.fill();
       total += seg.length;
     }
 
