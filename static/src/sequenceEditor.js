@@ -316,6 +316,10 @@ function collectSteps(list) {
   return steps;
 }
 
+function hasComplex(steps) {
+  return steps.some((s) => s.if || s.loop || s.while || s.call);
+}
+
 addBtn.addEventListener('click', () => rootList.appendChild(createActionNode()));
 addCondBtn.addEventListener('click', () => rootList.appendChild(createIfNode()));
 if (addLoopBtn) addLoopBtn.addEventListener('click', () => rootList.appendChild(createLoopNode()));
@@ -352,7 +356,7 @@ if (loadBtn)
 
 saveBtn.addEventListener('click', async () => {
   const name = document.getElementById('seqName').value.trim();
-  const format = document.getElementById('seqFormat').value;
+  let format = document.getElementById('seqFormat').value;
   if (!name) {
     alert('Name fehlt');
     return;
@@ -361,6 +365,10 @@ saveBtn.addEventListener('click', async () => {
   if (!steps.length) {
     alert('Keine Schritte');
     return;
+  }
+  if (hasComplex(steps) && format !== 'json') {
+    format = 'json';
+    document.getElementById('seqFormat').value = 'json';
   }
   const res = await fetch('/api/sequences', {
     method: 'POST',
