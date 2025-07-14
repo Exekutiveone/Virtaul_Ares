@@ -455,10 +455,26 @@ function connectCorners() {
 window.addEventListener('resize', resizeCanvas);
 
 function revealCone(x, y, length, angle, baseWidth) {
+  let hit = null;
   slamCtx.save();
   slamCtx.globalCompositeOperation = 'destination-out';
-  car.drawKegel(x, y, length, angle, '#000', baseWidth, slamCtx);
+  car.drawKegel(
+    x,
+    y,
+    length,
+    angle,
+    '#000',
+    baseWidth,
+    slamCtx,
+    (hx, hy) => (hit = { x: hx, y: hy }),
+  );
   slamCtx.restore();
+  if (hit) {
+    slamCtx.fillStyle = 'red';
+    slamCtx.beginPath();
+    slamCtx.arc(hit.x, hit.y, 3, 0, 2 * Math.PI);
+    slamCtx.fill();
+  }
 }
 
 function revealCar() {

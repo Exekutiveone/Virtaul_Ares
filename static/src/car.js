@@ -316,7 +316,16 @@ export class Car {
     return [segment, ...rest];
   }
 
-  drawKegel(x, y, length, angle, color, baseWidth, ctx = this.ctx) {
+  drawKegel(
+    x,
+    y,
+    length,
+    angle,
+    color,
+    baseWidth,
+    ctx = this.ctx,
+    hitCallback,
+  ) {
     x *= this.scale;
     y *= this.scale;
     baseWidth *= this.scale;
@@ -354,6 +363,12 @@ export class Car {
     }
 
     const first = segments.length ? segments[0].length : length;
+    if (hitCallback && segments.length && segments[0].length < length) {
+      const seg = segments[0];
+      const hx = seg.x + Math.cos(seg.angle) * seg.length;
+      const hy = seg.y + Math.sin(seg.angle) * seg.length;
+      hitCallback(hx, hy, first);
+    }
     return first;
   }
 
