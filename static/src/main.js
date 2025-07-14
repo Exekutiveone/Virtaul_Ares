@@ -7,6 +7,15 @@ import * as db from './db.js';
 import { sendAction } from './autopilot/index.js';
 import { CONTROL_API_URL, TELEMETRY_API_URL } from './config.js';
 
+function pushMapToServer(gameMap, name = 'map') {
+  const data = gameMap.toJSON ? gameMap.toJSON() : gameMap;
+  fetch('/api/maps', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, map: data }),
+  }).catch((err) => console.error('pushMapToServer failed', err));
+}
+
 // 1 Pixel entspricht dieser Anzahl Zentimeter
 const CM_PER_PX = 2;
 
@@ -319,6 +328,7 @@ if (csvMapUrl) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
+    pushMapToServer(gameMap, currentCsvFile || 'map');
   });
 }
 let obstacles = gameMap.obstacles;
@@ -802,6 +812,7 @@ function loadMapFile(e) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
+    pushMapToServer(gameMap, file.name || 'map');
   });
 }
 
@@ -817,6 +828,7 @@ function loadMapCsv(e) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
+    pushMapToServer(gameMap, file.name || 'map');
   });
 }
 
@@ -883,6 +895,7 @@ if (editorMode) {
     resizeCanvas();
     generateBorder(gameMap, respawnTarget);
     updateObstacleOptions();
+    pushMapToServer(gameMap, 'map');
   });
 }
 
