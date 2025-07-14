@@ -15,6 +15,7 @@ telemetry_log = []
 latest_telemetry = None
 current_map = None
 current_grid = None
+current_slam_map = None
 
 
 @app.route('/')
@@ -332,6 +333,21 @@ def grid():
     if current_grid is None:
         return jsonify({'error': 'no map'}), 404
     return jsonify(current_grid)
+
+
+@app.route('/api/slam-map')
+def slam_map():
+    if current_slam_map is None:
+        # default simple map: return current_grid if available
+        if current_grid is None:
+            return jsonify({'gridSize': {'width': 0, 'height': 0}, 'cells': []})
+        else:
+            h = len(current_grid)
+            w = len(current_grid[0]) if h else 0
+            return jsonify({'gridSize': {'width': w, 'height': h}, 'cells': current_grid})
+    h = len(current_slam_map)
+    w = len(current_slam_map[0]) if h else 0
+    return jsonify({'gridSize': {'width': w, 'height': h}, 'cells': current_slam_map})
 
 if __name__ == '__main__':
     app.run(debug=True)
