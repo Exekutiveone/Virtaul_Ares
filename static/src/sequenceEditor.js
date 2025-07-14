@@ -2,14 +2,59 @@ const tblBody = document.querySelector('#stepsTbl tbody');
 const addBtn = document.getElementById('addStep');
 const saveBtn = document.getElementById('saveSeq');
 
-function addRow(action = '', duration = 1) {
+function createSelect(action) {
+  const sel = document.createElement('select');
+  sel.className = 'action';
+  sel.innerHTML = `
+    <option value="forward">Vorwärts</option>
+    <option value="backward">Rückwärts</option>
+    <option value="stop">Stopp</option>
+    <option value="left">Links drehen</option>
+    <option value="right">Rechts drehen</option>`;
+  sel.value = action;
+  return sel;
+}
+
+function updateInput(tr) {
+  const act = tr.querySelector('.action').value;
+  const inp = tr.querySelector('.val');
+  if (act === 'left' || act === 'right') {
+    inp.placeholder = 'Winkel (°)';
+    inp.disabled = false;
+  } else if (act === 'stop') {
+    inp.placeholder = '';
+    inp.value = '';
+    inp.disabled = true;
+  } else {
+    inp.placeholder = 'Dauer (s)';
+    inp.disabled = false;
+  }
+}
+
+function addRow(action = 'forward', value = 1) {
   const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input value="${action}"></td>
-    <td><input type="number" value="${duration}" min="0.1" step="0.1"></td>
-    <td><button class="del">x</button></td>`;
-  tr.querySelector('.del').addEventListener('click', () => tr.remove());
+  const select = createSelect(action);
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'val';
+  input.step = '0.1';
+  input.value = value;
+  const del = document.createElement('button');
+  del.textContent = 'x';
+  del.className = 'del';
+  const td1 = document.createElement('td');
+  const td2 = document.createElement('td');
+  const td3 = document.createElement('td');
+  td1.appendChild(select);
+  td2.appendChild(input);
+  td3.appendChild(del);
+  tr.appendChild(td1);
+  tr.appendChild(td2);
+  tr.appendChild(td3);
   tblBody.appendChild(tr);
+  select.addEventListener('change', () => updateInput(tr));
+  del.addEventListener('click', () => tr.remove());
+  updateInput(tr);
 }
 
 addBtn.addEventListener('click', () => addRow());
@@ -21,9 +66,11 @@ saveBtn.addEventListener('click', async () => {
   if (!name) { alert('Name fehlt'); return; }
   const steps = [];
   tblBody.querySelectorAll('tr').forEach(tr => {
-    const action = tr.children[0].firstElementChild.value.trim();
-    const dur = parseFloat(tr.children[1].firstElementChild.value);
-    if (action && !isNaN(dur)) steps.push({action,duration:dur});
+    const action = tr.querySelector('.action').value;
+    const inp = tr.querySelector('.val');
+    let val = 0;
+    if (!inp.disabled) val = parseFloat(inp.value);
+    if (action && !isNaN(val)) steps.push({action,duration:val});
   });
   if (!steps.length) { alert('Keine Schritte'); return; }
   const res = await fetch('/api/sequences', {

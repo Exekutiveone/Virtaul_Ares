@@ -16,6 +16,10 @@ telemetry_log = []
 
 @app.route('/')
 def index():
+    return render_template('landing.html')
+
+@app.route('/maps')
+def map_list():
     return render_template('index.html')
 
 
