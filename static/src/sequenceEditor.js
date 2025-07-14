@@ -1,31 +1,42 @@
-const tblBody = document.querySelector('#stepsTbl tbody');
+const rootList = document.querySelector('#steps');
 const addBtn = document.getElementById('addStep');
 const addCondBtn = document.getElementById('addCond');
 const addLoopBtn = document.getElementById('addLoop');
 const saveBtn = document.getElementById('saveSeq');
 
-let draggedRow = null;
+let draggedElem = null;
 
-tblBody.addEventListener('dragstart', (e) => {
-  const tr = e.target.closest('tr');
-  if (!tr) return;
-  draggedRow = tr;
-  e.dataTransfer.effectAllowed = 'move';
-});
+function initDrag(container) {
+  container.addEventListener('dragstart', (e) => {
+    const li = e.target.closest('li.step');
+    if (!li) return;
+    draggedElem = li;
+    e.dataTransfer.effectAllowed = 'move';
+  });
 
-tblBody.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  const tr = e.target.closest('tr');
-  if (!draggedRow || !tr || draggedRow === tr) return;
-  const rect = tr.getBoundingClientRect();
-  const next = e.clientY - rect.top > rect.height / 2;
-  tblBody.insertBefore(draggedRow, next ? tr.nextSibling : tr);
-});
+  container.addEventListener('dragover', (e) => {
+    if (!draggedElem) return;
+    const li = e.target.closest('li.step');
+    const list = e.target.closest('ul.steps');
+    if (!list) return;
+    e.preventDefault();
+    if (!li || li === draggedElem || li.parentElement !== list) {
+      if (list !== draggedElem && !draggedElem.contains(list))
+        list.appendChild(draggedElem);
+      return;
+    }
+    const rect = li.getBoundingClientRect();
+    const next = e.clientY - rect.top > rect.height / 2;
+    list.insertBefore(draggedElem, next ? li.nextSibling : li);
+  });
 
-tblBody.addEventListener('drop', (e) => {
-  e.preventDefault();
-  draggedRow = null;
-});
+  container.addEventListener('drop', (e) => {
+    if (!draggedElem) return;
+    const list = e.target.closest('ul.steps');
+    if (list) e.preventDefault();
+    draggedElem = null;
+  });
+}
 
 function createSelect(action) {
   const sel = document.createElement('select');
@@ -40,9 +51,9 @@ function createSelect(action) {
   return sel;
 }
 
-function updateInput(tr) {
-  const act = tr.querySelector('.action').value;
-  const inp = tr.querySelector('.val');
+function updateInput(li) {
+  const act = li.querySelector('.action').value;
+  const inp = li.querySelector('.val');
   if (act === 'left' || act === 'right') {
     inp.placeholder = 'Winkel (°)';
     inp.disabled = false;
@@ -56,10 +67,11 @@ function updateInput(tr) {
   }
 }
 
-function addRow(action = 'forward', value = 1) {
-  const tr = document.createElement('tr');
-  tr.draggable = true;
-  const select = createSelect(action);
+function createActionNode(action = 'forward', value = 1) {
+  const li = document.createElement('li');
+  li.className = 'step action';
+  li.draggable = true;
+  const sel = createSelect(action);
   const input = document.createElement('input');
   input.type = 'number';
   input.className = 'val';
@@ -68,29 +80,18 @@ function addRow(action = 'forward', value = 1) {
   const del = document.createElement('button');
   del.textContent = 'x';
   del.className = 'del';
-  const td1 = document.createElement('td');
-  const td2 = document.createElement('td');
-  const td3 = document.createElement('td');
-  td1.appendChild(select);
-  td2.appendChild(input);
-  td3.appendChild(del);
-  tr.appendChild(td1);
-  tr.appendChild(td2);
-  tr.appendChild(td3);
-  tblBody.appendChild(tr);
-  select.addEventListener('change', () => updateInput(tr));
-  del.addEventListener('click', () => tr.remove());
-  updateInput(tr);
+  li.append(sel, input, del);
+  sel.addEventListener('change', () => updateInput(li));
+  del.addEventListener('click', () => li.remove());
+  updateInput(li);
+  return li;
 }
 
-function addCondRow() {
-  const tr = document.createElement('tr');
-  tr.draggable = true;
-  tr.className = 'condRow';
-  const td1 = document.createElement('td');
-  const td2 = document.createElement('td');
-  const td3 = document.createElement('td');
-
+function createIfNode() {
+  const li = document.createElement('li');
+  li.className = 'step if';
+  li.draggable = true;
+  const header = document.createElement('div');
   const sensorSel = document.createElement('select');
   sensorSel.className = 'sensor';
   sensorSel.innerHTML = `
@@ -110,79 +111,86 @@ function addCondRow() {
   valInput.className = 'condVal';
   valInput.step = '0.1';
   valInput.value = 30;
-  td1.append('Wenn ', sensorSel, opSel, valInput, ' cm');
-
-  const thenAct = createSelect('stop');
-  thenAct.classList.add('thenAct');
-  const thenDur = document.createElement('input');
-  thenDur.type = 'number';
-  thenDur.className = 'thenDur';
-  thenDur.step = '0.1';
-  thenDur.value = 0;
-
-  const elseAct = createSelect('forward');
-  elseAct.classList.add('elseAct');
-  const elseDur = document.createElement('input');
-  elseDur.type = 'number';
-  elseDur.className = 'elseDur';
-  elseDur.step = '0.1';
-  elseDur.value = 1;
-
-  td2.append('dann ', thenAct, thenDur, ' sonst ', elseAct, elseDur);
-
   const del = document.createElement('button');
   del.textContent = 'x';
   del.className = 'del';
-  td3.appendChild(del);
+  header.append('Wenn ', sensorSel, opSel, valInput, ' cm ', del);
+  li.appendChild(header);
 
-  tr.appendChild(td1);
-  tr.appendChild(td2);
-  tr.appendChild(td3);
-  tblBody.appendChild(tr);
+  const thenDiv = document.createElement('div');
+  thenDiv.textContent = 'dann:';
+  const thenList = document.createElement('ul');
+  thenList.className = 'steps then';
+  thenDiv.appendChild(thenList);
+  li.appendChild(thenDiv);
 
-  del.addEventListener('click', () => tr.remove());
+  const elseDiv = document.createElement('div');
+  elseDiv.textContent = 'sonst:';
+  const elseList = document.createElement('ul');
+  elseList.className = 'steps else';
+  elseDiv.appendChild(elseList);
+  li.appendChild(elseDiv);
+
+  initDrag(thenList);
+  initDrag(elseList);
+  del.addEventListener('click', () => li.remove());
+  return li;
 }
 
-function addLoopRow() {
-  const tr = document.createElement('tr');
-  tr.draggable = true;
-  tr.className = 'loopRow';
-  const td1 = document.createElement('td');
-  const td2 = document.createElement('td');
-  const td3 = document.createElement('td');
-
+function createLoopNode() {
+  const li = document.createElement('li');
+  li.className = 'step loop';
+  li.draggable = true;
+  const header = document.createElement('div');
   const countInput = document.createElement('input');
   countInput.type = 'number';
   countInput.min = '1';
   countInput.className = 'loopCount';
   countInput.value = 2;
-  td1.append('for ', countInput, 'x');
-
-  const select = createSelect('forward');
-  const dur = document.createElement('input');
-  dur.type = 'number';
-  dur.className = 'val';
-  dur.step = '0.1';
-  dur.value = 1;
-  td2.append(select, dur);
-
   const del = document.createElement('button');
   del.textContent = 'x';
   del.className = 'del';
-  td3.appendChild(del);
-
-  tr.appendChild(td1);
-  tr.appendChild(td2);
-  tr.appendChild(td3);
-  tblBody.appendChild(tr);
-
-  del.addEventListener('click', () => tr.remove());
+  header.append('for ', countInput, 'x ', del);
+  li.appendChild(header);
+  const inner = document.createElement('ul');
+  inner.className = 'steps';
+  li.appendChild(inner);
+  initDrag(inner);
+  del.addEventListener('click', () => li.remove());
+  return li;
 }
 
-addBtn.addEventListener('click', () => addRow());
-addCondBtn.addEventListener('click', () => addCondRow());
-if (addLoopBtn) addLoopBtn.addEventListener('click', () => addLoopRow());
-addRow();
+function collectSteps(list) {
+  const steps = [];
+  list.querySelectorAll(':scope > li.step').forEach((li) => {
+    if (li.classList.contains('action')) {
+      const action = li.querySelector('.action').value;
+      const inp = li.querySelector('.val');
+      let val = 0;
+      if (!inp.disabled) val = parseFloat(inp.value);
+      steps.push({ action, duration: val });
+    } else if (li.classList.contains('if')) {
+      const sensor = li.querySelector('.sensor').value;
+      const op = li.querySelector('.op').value;
+      const val = parseFloat(li.querySelector('.condVal').value);
+      const thenSteps = collectSteps(li.querySelector('ul.then'));
+      const elseSteps = collectSteps(li.querySelector('ul.else'));
+      steps.push({ if: { sensor, op, value: val, then: thenSteps, else: elseSteps } });
+    } else if (li.classList.contains('loop')) {
+      const count = parseInt(li.querySelector('.loopCount').value);
+      const inner = collectSteps(li.querySelector('ul.steps'));
+      steps.push({ loop: { repeat: count, steps: inner } });
+    }
+  });
+  return steps;
+}
+
+addBtn.addEventListener('click', () => rootList.appendChild(createActionNode()));
+addCondBtn.addEventListener('click', () => rootList.appendChild(createIfNode()));
+if (addLoopBtn) addLoopBtn.addEventListener('click', () => rootList.appendChild(createLoopNode()));
+
+initDrag(rootList);
+rootList.appendChild(createActionNode());
 
 saveBtn.addEventListener('click', async () => {
   const name = document.getElementById('seqName').value.trim();
@@ -191,32 +199,7 @@ saveBtn.addEventListener('click', async () => {
     alert('Name fehlt');
     return;
   }
-  const steps = [];
-  tblBody.querySelectorAll('tr').forEach((tr) => {
-    if (tr.classList.contains('condRow')) {
-      const sensor = tr.querySelector('.sensor').value;
-      const op = tr.querySelector('.op').value;
-      const val = parseFloat(tr.querySelector('.condVal').value);
-      const a1 = tr.querySelector('.thenAct').value;
-      const d1 = parseFloat(tr.querySelector('.thenDur').value);
-      const a2 = tr.querySelector('.elseAct').value;
-      const d2 = parseFloat(tr.querySelector('.elseDur').value);
-      const line = `if ${sensor} ${op} ${val} then ${a1} ${d1} else ${a2} ${d2}`;
-      steps.push({ line });
-    } else if (tr.classList.contains('loopRow')) {
-      const count = parseInt(tr.querySelector('.loopCount').value);
-      const action = tr.querySelector('.action').value;
-      const val = parseFloat(tr.querySelector('.val').value);
-      if (action && !isNaN(val) && count > 0)
-        steps.push({ action, duration: val, repeat: count });
-    } else {
-      const action = tr.querySelector('.action').value;
-      const inp = tr.querySelector('.val');
-      let val = 0;
-      if (!inp.disabled) val = parseFloat(inp.value);
-      if (action && !isNaN(val)) steps.push({ action, duration: val });
-    }
-  });
+  const steps = collectSteps(rootList);
   if (!steps.length) {
     alert('Keine Schritte');
     return;
@@ -228,8 +211,8 @@ saveBtn.addEventListener('click', async () => {
   });
   if (res.ok) {
     alert('Gespeichert');
-    tblBody.innerHTML = '';
-    addRow();
+    rootList.innerHTML = '';
+    rootList.appendChild(createActionNode());
   } else {
     alert('Fehler beim Speichern');
   }
