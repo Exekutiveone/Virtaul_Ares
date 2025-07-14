@@ -13,23 +13,8 @@
   <h2>Zustand</h2>
   <pre id="state"></pre>
   <h2>Kartendaten</h2>
+  <canvas id="mapCanvas" width="640" height="480" style="background:#222;"></canvas>
   <pre id="grid"></pre>
-<script>
-async function refresh(){
-  const sRes=await fetch('/api/car');
-  const s=await sRes.json();
-  document.getElementById('state').textContent=JSON.stringify(s,null,2);
-  const gRes=await fetch('/api/grid');
-  const gridEl=document.getElementById('grid');
-  if(gRes.ok){
-    const g=await gRes.json();
-    gridEl.textContent=JSON.stringify(g,null,2);
-  }else{
-    gridEl.textContent='Keine Kartendaten verf\u00fcgbar';
-  }
-}
-setInterval(refresh,1000);
-refresh();
-</script>
+<script type="module" src="{{ url_for('static', filename='src/status.js') }}"></script>
 </body>
 </html>
