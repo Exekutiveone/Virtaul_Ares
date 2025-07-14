@@ -28,6 +28,10 @@ def map2_page():
 CSV_MAPS_FOLDER = os.path.join(app.static_folder, 'maps')
 CSV_LIST_FILE = os.path.join(CSV_MAPS_FOLDER, 'list.json')
 
+# Sequence storage
+SEQUENCE_FOLDER = os.path.join(app.static_folder, 'sequences')
+SEQUENCE_LIST_FILE = os.path.join(SEQUENCE_FOLDER, 'list.json')
+
 
 def load_csv_map_list():
     if os.path.exists(CSV_LIST_FILE):
@@ -38,6 +42,17 @@ def load_csv_map_list():
 
 def save_csv_map_list(data):
     with open(CSV_LIST_FILE, 'w') as f:
+        json.dump(data, f)
+
+def load_seq_list():
+    if os.path.exists(SEQUENCE_LIST_FILE):
+        with open(SEQUENCE_LIST_FILE) as f:
+            return json.load(f)
+    return []
+
+def save_seq_list(data):
+    os.makedirs(SEQUENCE_FOLDER, exist_ok=True)
+    with open(SEQUENCE_LIST_FILE, 'w') as f:
         json.dump(data, f)
 
 
@@ -68,6 +83,40 @@ def csv_maps():
     else:
         maps_list = load_csv_map_list()
         return jsonify(maps_list)
+
+
+@app.route('/sequence')
+def sequence_page():
+    return render_template('sequence.html')
+
+
+@app.route('/api/sequences', methods=['GET', 'POST'])
+def sequences_api():
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        name = data.get('name')
+        steps = data.get('steps')
+        fmt = data.get('format', 'csv')
+        if not name or not steps:
+            return jsonify({'error': 'missing name or steps'}), 400
+        filename = secure_filename(name)
+        if fmt == 'ros':
+            if not filename.endswith('.ros'):
+                filename += '.ros'
+            lines = [f"{s['action']} {s['duration']}" for s in steps]
+        else:
+            if not filename.endswith('.csv'):
+                filename += '.csv'
+            lines = [f"{s['action']},{s['duration']}" for s in steps]
+        os.makedirs(SEQUENCE_FOLDER, exist_ok=True)
+        with open(os.path.join(SEQUENCE_FOLDER, filename), 'w') as f:
+            f.write("\n".join(lines))
+        lst = load_seq_list()
+        lst.append({'file': filename, 'name': name, 'created': datetime.utcnow().isoformat(), 'format': fmt})
+        save_seq_list(lst)
+        return jsonify({'file': filename}), 201
+    else:
+        return jsonify(load_seq_list())
 
 
 @app.route('/api/csv-maps/<filename>', methods=['PUT'])
