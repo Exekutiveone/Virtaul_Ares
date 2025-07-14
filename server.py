@@ -207,9 +207,29 @@ def update_csv_map(filename):
         return jsonify({'error': 'not found'}), 404
 
     data = request.get_json(force=True)
+    new_name = data.get('name')
     csv_data = data.get('csv')
-    if not csv_data:
+
+    if new_name and not csv_data:
+        base, ext = os.path.splitext(secure_name)
+        new_file = secure_filename(new_name)
+        if not new_file.endswith('.csv'):
+            new_file += '.csv'
+        new_path = os.path.join(CSV_MAPS_FOLDER, new_file)
+        os.rename(path, new_path)
+        maps_list = load_csv_map_list()
+        for entry in maps_list:
+            if entry['file'] == secure_name:
+                entry['file'] = new_file
+                entry['name'] = new_name
+                entry['created'] = datetime.utcnow().isoformat()
+                break
+        save_csv_map_list(maps_list)
+        return jsonify({'file': new_file}), 200
+
+    if csv_data is None:
         return jsonify({'error': 'missing csv'}), 400
+
     with open(path, 'w') as f:
         f.write(csv_data)
     maps_list = load_csv_map_list()
