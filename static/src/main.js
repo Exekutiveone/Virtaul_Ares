@@ -40,6 +40,8 @@ const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
 const sequenceSelect = document.getElementById('sequenceSelect');
 const runSequenceBtn = document.getElementById('runSequenceBtn');
 const controlModeSelect = document.getElementById('controlMode');
+const restartBtn = document.getElementById('restartBtn');
+const nextMapBtn = document.getElementById('nextMapBtn');
 let controlMode = controlModeSelect ? controlModeSelect.value : 'wasd';
 let mouseTarget = null;
 const keyMap = {
@@ -60,12 +62,33 @@ const rpmEl = document.getElementById('rpm');
 const gyroEl = document.getElementById('gyro');
 const slamCoverageEl = document.getElementById('slamCoverage');
 let coverageInterval = null;
+let mapList = [];
+let currentMapIndex = -1;
 const cellCmInput = document.getElementById('gridCellCm');
 const widthCmInput = document.getElementById('gridWidth');
 const heightCmInput = document.getElementById('gridHeight');
 const params = new URLSearchParams(window.location.search);
 const csvMapUrl = params.get('map');
 const editorMode = params.has('editor');
+
+async function initMapList() {
+  try {
+    const res = await fetch('/api/csv-maps');
+    if (!res.ok) return;
+    mapList = await res.json();
+    if (csvMapUrl) {
+      const file = csvMapUrl.startsWith('/static/maps/')
+        ? decodeURIComponent(csvMapUrl.substring('/static/maps/'.length))
+        : csvMapUrl;
+      currentMapIndex = mapList.findIndex((m) => m.file === file);
+    }
+    if (currentMapIndex === -1 && mapList.length) currentMapIndex = 0;
+  } catch (err) {
+    console.error('initMapList failed', err);
+  }
+}
+
+initMapList();
 
 if (controlModeSelect) {
   controlModeSelect.addEventListener('change', () => {
@@ -296,6 +319,7 @@ const initialRows = Math.max(
   Math.round(initialHeightCm / parseFloat(cellCmInput.value)),
 );
 let gameMap = new GameMap(initialCols, initialRows, CELL_SIZE);
+let originalMapData = gameMap.toJSON();
 let previewSize;
 updateObstacleOptions();
 let currentCsvFile = null;
@@ -319,6 +343,7 @@ if (csvMapUrl) {
   }
   db.loadMapCsvUrl(csvMapUrl).then((gm) => {
     gameMap = gm;
+    originalMapData = gm.toJSON();
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
@@ -805,6 +830,7 @@ function loadMapFile(e) {
   if (!file) return;
   db.loadMapFile(file).then((obj) => {
     gameMap = GameMap.fromJSON(obj);
+    originalMapData = gameMap.toJSON();
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
@@ -821,6 +847,7 @@ function loadMapCsv(e) {
   if (!file) return;
   db.loadMapCsvFile(file).then((gm) => {
     gameMap = gm;
+    originalMapData = gm.toJSON();
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
@@ -830,6 +857,55 @@ function loadMapCsv(e) {
     resizeCanvas();
     pushMapToServer(gameMap, file.name || 'map');
   });
+}
+
+function loadMapByIndex(idx) {
+  if (!mapList.length) return;
+  currentMapIndex = (idx + mapList.length) % mapList.length;
+  const entry = mapList[currentMapIndex];
+  currentCsvFile = entry.file;
+  const url = '/static/maps/' + encodeURIComponent(entry.file);
+  db.loadMapCsvUrl(url).then((gm) => {
+    gameMap = gm;
+    originalMapData = gm.toJSON();
+    CELL_SIZE = gameMap.cellSize;
+    obstacles = gameMap.obstacles;
+    targetMarker = gameMap.target;
+    refreshCarObjects();
+    widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
+    heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
+    resizeCanvas();
+    pushMapToServer(gameMap, currentCsvFile || 'map');
+    if (slamMode) {
+      slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+      slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+      prevCarRect = null;
+      revealCar();
+      updateSlamCoverage();
+    }
+    car.reset();
+  });
+}
+
+function resetMap() {
+  if (!originalMapData) return;
+  gameMap = GameMap.fromJSON(originalMapData);
+  CELL_SIZE = gameMap.cellSize;
+  obstacles = gameMap.obstacles;
+  targetMarker = gameMap.target;
+  refreshCarObjects();
+  widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
+  heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
+  resizeCanvas();
+  pushMapToServer(gameMap, currentCsvFile || 'map');
+  if (slamMode) {
+    slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+    slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+    prevCarRect = null;
+    revealCar();
+    updateSlamCoverage();
+  }
+  car.reset();
 }
 
 if (editorMode) {
@@ -894,6 +970,7 @@ if (editorMode) {
     refreshCarObjects();
     resizeCanvas();
     generateBorder(gameMap, respawnTarget);
+    originalMapData = gameMap.toJSON();
     updateObstacleOptions();
     pushMapToServer(gameMap, 'map');
   });
@@ -969,3 +1046,5 @@ function autoFollowCar(margin = 50) {
 }
 
 findCarBtn.addEventListener('click', () => centerOnCar(500));
+if (restartBtn) restartBtn.addEventListener('click', resetMap);
+if (nextMapBtn) nextMapBtn.addEventListener('click', () => loadMapByIndex(currentMapIndex + 1));
