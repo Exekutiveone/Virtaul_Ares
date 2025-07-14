@@ -58,6 +58,8 @@ const blueRight1El = document.getElementById('blueRight1');
 const blueRight2El = document.getElementById('blueRight2');
 const blueBackEl = document.getElementById('blueBack');
 const speedEl = document.getElementById('speed');
+const speedSlider = document.getElementById('speedSlider');
+const speedSliderVal = document.getElementById('speedSliderVal');
 const rpmEl = document.getElementById('rpm');
 const gyroEl = document.getElementById('gyro');
 const slamCoverageEl = document.getElementById('slamCoverage');
@@ -1087,3 +1089,10 @@ function autoFollowCar(margin = 50) {
 findCarBtn.addEventListener('click', () => centerOnCar(500));
 if (restartBtn) restartBtn.addEventListener('click', resetMap);
 if (nextMapBtn) nextMapBtn.addEventListener('click', () => loadMapByIndex(currentMapIndex + 1));
+if (speedSlider) {
+  speedSlider.addEventListener('input', () => {
+    const val = parseFloat(speedSlider.value);
+    if (speedSliderVal) speedSliderVal.textContent = val;
+    car.fixedSpeed = val > 0 ? val : null;
+  });
+}
