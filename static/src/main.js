@@ -308,19 +308,34 @@ function paintCell(x, y) {
 }
 
 function addLine(a, b, size) {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const steps = Math.max(Math.abs(dx), Math.abs(dy)) / CELL_SIZE;
-  const stepX = Math.sign(dx) * CELL_SIZE;
-  const stepY = Math.sign(dy) * CELL_SIZE;
-  let x = a.x;
-  let y = a.y;
-  for (let i = 0; i <= steps; i++) {
-    if (!obstacles.some((o) => o.x === x && o.y === y && o.size === size)) {
-      obstacles.push(new Obstacle(x, y, size));
+  // convert to cell coordinates so the Bresenham algorithm works with integers
+  let x0 = a.x / CELL_SIZE;
+  let y0 = a.y / CELL_SIZE;
+  const x1 = b.x / CELL_SIZE;
+  const y1 = b.y / CELL_SIZE;
+
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+
+  while (true) {
+    const px = x0 * CELL_SIZE;
+    const py = y0 * CELL_SIZE;
+    if (!obstacles.some((o) => o.x === px && o.y === py && o.size === size)) {
+      obstacles.push(new Obstacle(px, py, size));
     }
-    x += stepX;
-    y += stepY;
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x0 += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y0 += sy;
+    }
   }
 }
 
@@ -503,7 +518,7 @@ function loop() {
       ctx.font = '12px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(p.id, p.x + previewSize / 2, p.y + previewSize / 2);
+      ctx.fillText(`P${p.id}`, p.x + previewSize / 2, p.y + previewSize / 2);
     }
   }
   if (targetMarker) {
