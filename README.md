@@ -1,6 +1,6 @@
 # Virtual Ares
 
-This repository contains a small browser based car simulator. The page `map2.html` loads several JavaScript modules from the `src` directory and renders a grid on which a car can drive. Obstacles and a target can be placed on the map and an autopilot can be used to find an optimal path to the target.
+This repository contains a small browser based car simulator. The page `map2.html` loads several JavaScript modules from the `src` directory and renders a grid on which a car can drive. Obstacles and a target can be placed on the map.
 
 ## Running the simulation
 
