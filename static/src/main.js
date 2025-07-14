@@ -326,6 +326,19 @@ function respawnTarget() {
 }
 
 const carImage = new Image();
+carImage.onload = () => {
+  resizeCanvas();
+  updateObstacleOptions();
+  loadSequences();
+  if (runSequenceBtn)
+    runSequenceBtn.addEventListener('click', () => {
+      const opt = sequenceSelect.options[sequenceSelect.selectedIndex];
+      if (opt) runSequence(opt.value, opt.dataset.format);
+    });
+  setInterval(pollControl, CONTROL_POLL_INTERVAL);
+  pollControl();
+  loop();
+};
 carImage.src = '/static/extracted_foreground.png';
 const HOTBOX_WIDTH_CM = 40;
 const HOTBOX_HEIGHT_CM = 20;
@@ -849,17 +862,3 @@ function centerOnCar(radiusCm = 500) {
 }
 
 findCarBtn.addEventListener('click', () => centerOnCar(500));
-
-carImage.onload = () => {
-  resizeCanvas();
-  updateObstacleOptions();
-  loadSequences();
-  if (runSequenceBtn)
-    runSequenceBtn.addEventListener('click', () => {
-      const opt = sequenceSelect.options[sequenceSelect.selectedIndex];
-      if (opt) runSequence(opt.value, opt.dataset.format);
-    });
-  setInterval(pollControl, CONTROL_POLL_INTERVAL);
-  pollControl();
-  loop();
-};
