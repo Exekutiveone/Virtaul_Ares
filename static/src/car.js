@@ -28,6 +28,8 @@ export class Car {
     this.hitboxHeight =
       hitboxHeight != null ? hitboxHeight : this.imgHeight;
 
+    this.startX = startX;
+    this.startY = startY;
     this.posX = startX;
     this.posY = startY;
     this.velocity = 0;
@@ -82,6 +84,21 @@ export class Car {
     this.wheelBase = 50;
   }
 
+  reset() {
+    this.posX = this.startX;
+    this.posY = this.startY;
+    this.velocity = 0;
+    this.acceleration = 0;
+    this.rotation = 0;
+    this.angularVelocity = 0;
+    this.angularAcceleration = 0;
+    this.speed = 0;
+    this.rpm = 0;
+    this.gyro = 0;
+    for (const k of Object.keys(this.keys)) this.keys[k] = false;
+  }
+
+  setKeysFromAction(action) {
   setKeysFromAction(action, value = null) {
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
     if (action === 'left') {
