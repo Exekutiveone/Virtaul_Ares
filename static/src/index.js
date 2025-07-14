@@ -13,6 +13,7 @@ async function loadList() {
       <div class="name">${m.name}</div>
       <div class="meta">${new Date(m.created).toLocaleDateString()} - ${m.creator}</div>
       <div class="buttons">
+        <button class="play">Spielen</button>
         <button class="edit">Bearbeiten</button>
         <button class="delete">Löschen</button>
       </div>`;
@@ -25,6 +26,10 @@ async function loadList() {
     gm.drawGrid(ctx);
     gm.obstacles.forEach((o) => o.draw(ctx));
     if (gm.target) gm.target.draw(ctx);
+    tile.querySelector('.play').addEventListener('click', () => {
+      window.location.href =
+        '/map2?map=/static/maps/' + encodeURIComponent(m.file);
+    });
     tile.querySelector('.edit').addEventListener('click', () => {
       window.location.href =
         '/map2?map=/static/maps/' + encodeURIComponent(m.file) + '&editor=1';
