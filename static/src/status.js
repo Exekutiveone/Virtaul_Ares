@@ -2,6 +2,8 @@ const canvas = document.getElementById('mapCanvas');
 const ctx = canvas.getContext('2d');
 const slamCanvas = document.getElementById('slamMapCanvas');
 const slamCtx = slamCanvas.getContext('2d');
+const baseSlamWidth = slamCanvas.width;
+const baseSlamHeight = slamCanvas.height;
 
 const CELL = 10; // pixel size of each grid cell
 const cols = Math.floor(canvas.width / CELL);
@@ -79,9 +81,14 @@ async function updateSlamMap() {
   const w = data.gridSize.width;
   const h = data.gridSize.height;
   if (!w || !h) return;
-  const cell = Math.floor(Math.min(slamCanvas.width / w, slamCanvas.height / h));
-  slamCanvas.width = w * cell;
-  slamCanvas.height = h * cell;
+  const cell = Math.max(1, Math.floor(Math.min(baseSlamWidth / w, baseSlamHeight / h)));
+  const newWidth = Math.max(1, w * cell);
+  const newHeight = Math.max(1, h * cell);
+  if (slamCanvas.width !== newWidth || slamCanvas.height !== newHeight) {
+    slamCanvas.width = newWidth;
+    slamCanvas.height = newHeight;
+  }
+  slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const val = data.cells[y][x];
