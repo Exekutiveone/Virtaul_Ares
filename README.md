@@ -13,9 +13,11 @@ python server.py
 
 Then open `http://127.0.0.1:5000/` in your browser. The server exposes the
 following services:
-- `http://127.0.0.1:5000/api/car` for telemetry data from the simulator.
+- `http://127.0.0.1:5000/api/car` for reading or sending telemetry data.
 - `http://127.0.0.1:5000/api/control` for remote control commands.
-The map editor is available at `http://127.0.0.1:5000/map2`.
+- `http://127.0.0.1:5000/api/grid` for the current occupancy grid.
+The map editor is available at `http://127.0.0.1:5000/map2`. A simple view of the
+API output can be found at `http://127.0.0.1:5000/status`.
 
 ## Saving and loading maps
 

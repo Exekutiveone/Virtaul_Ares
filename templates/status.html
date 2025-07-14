@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>API Daten</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#111;color:#eee;margin:0;padding:20px}
+    pre{background:#222;padding:10px}
+  </style>
+</head>
+<body>
+  <h1>API Daten</h1>
+  <h2>Zustand</h2>
+  <pre id="state"></pre>
+  <h2>Kartendaten</h2>
+  <pre id="grid"></pre>
+<script>
+async function refresh(){
+  const sRes=await fetch('/api/car');
+  const s=await sRes.json();
+  document.getElementById('state').textContent=JSON.stringify(s,null,2);
+  const gRes=await fetch('/api/grid');
+  if(gRes.ok){
+    const g=await gRes.json();
+    document.getElementById('grid').textContent=JSON.stringify(g,null,2);
+  }
+}
+setInterval(refresh,1000);
+refresh();
+</script>
+</body>
+</html>
