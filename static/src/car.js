@@ -36,13 +36,10 @@ export class Car {
     this.acceleration = 0;
     this.rotation = 0;
     this.angularVelocity = 0;
-    this.angularAcceleration = 0;
 
     this.maxSpeed = 5;
     this.accelRate = 0.2;
     this.decelRate = 0.05;
-    this.rotAccelRate = 0.0005;
-    this.rotDecelRate = 0.003;
 
     this.maxRpm = 5000;
     this.speed = 0;
@@ -79,6 +76,12 @@ export class Car {
     this.leftDistance = Infinity;
     this.rightDistance = Infinity;
     this.rearDistance = Infinity;
+
+    // Steering state in radians
+    this.steeringAngle = 0;
+    this.maxSteering = (70 * Math.PI) / 180;
+    this.steerRate = 0.02;
+    this.wheelBase = 50;
   }
 
   reset() {
@@ -96,7 +99,34 @@ export class Car {
   }
 
   setKeysFromAction(action) {
+  setKeysFromAction(action, value = null) {
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
+    if (action === 'left') {
+      if (typeof value === 'number') {
+        this.steeringAngle = Math.max(
+          -this.maxSteering,
+          Math.min(this.maxSteering, (-value * Math.PI) / 180),
+        );
+      } else {
+        this.keys.ArrowLeft = true;
+      }
+      return;
+    }
+    if (action === 'right') {
+      if (typeof value === 'number') {
+        this.steeringAngle = Math.max(
+          -this.maxSteering,
+          Math.min(this.maxSteering, (value * Math.PI) / 180),
+        );
+      } else {
+        this.keys.ArrowRight = true;
+      }
+      return;
+    }
+    if (action === 'straight') {
+      this.steeringAngle = 0;
+      return;
+    }
     const key = this.actionMap[action];
     if (key) this.keys[key] = true;
   }
@@ -450,25 +480,25 @@ export class Car {
             ? this.decelRate
             : 0;
 
-    if (this.keys.ArrowLeft) this.angularAcceleration = -this.rotAccelRate;
-    else if (this.keys.ArrowRight) this.angularAcceleration = this.rotAccelRate;
-    else
-      this.angularAcceleration =
-        this.angularVelocity > 0
-          ? -this.rotDecelRate
-          : this.angularVelocity < 0
-            ? this.rotDecelRate
-            : 0;
+    if (this.keys.ArrowLeft)
+      this.steeringAngle = Math.max(
+        -this.maxSteering,
+        this.steeringAngle - this.steerRate,
+      );
+    else if (this.keys.ArrowRight)
+      this.steeringAngle = Math.min(
+        this.maxSteering,
+        this.steeringAngle + this.steerRate,
+      );
+    else if (this.steeringAngle > 0)
+      this.steeringAngle = Math.max(0, this.steeringAngle - this.steerRate);
+    else if (this.steeringAngle < 0)
+      this.steeringAngle = Math.min(0, this.steeringAngle + this.steerRate);
 
     this.velocity += this.acceleration;
-    this.angularVelocity += this.angularAcceleration;
     this.velocity = Math.max(
       -this.maxSpeed,
       Math.min(this.maxSpeed, this.velocity),
-    );
-    this.angularVelocity = Math.max(
-      -0.03,
-      Math.min(0.03, this.angularVelocity),
     );
 
     if (
@@ -477,18 +507,18 @@ export class Car {
       !this.keys.ArrowDown
     )
       this.velocity = 0;
-    if (
-      Math.abs(this.angularVelocity) < 0.001 &&
-      !this.keys.ArrowLeft &&
-      !this.keys.ArrowRight
-    )
-      this.angularVelocity = 0;
+
+    const rotChange =
+      this.velocity !== 0
+        ? (this.velocity / this.wheelBase) * Math.tan(this.steeringAngle)
+        : 0;
+    this.angularVelocity = rotChange;
 
     // Move in the direction the car's front is facing.
     const frontRot = this.rotation + Math.PI;
     const nx = this.posX + Math.cos(frontRot) * this.velocity;
     const ny = this.posY + Math.sin(frontRot) * this.velocity;
-    const newRotation = this.rotation + this.angularVelocity;
+    const newRotation = this.rotation + rotChange;
     const bbox = this.getBoundingBox(nx, ny, newRotation);
 
     const inBounds =
@@ -506,18 +536,10 @@ export class Car {
         this.posY = ny;
         this.rotation = newRotation;
       } else {
-        this.velocity =
-          this.acceleration =
-          this.angularVelocity =
-          this.angularAcceleration =
-            0;
+        this.velocity = this.acceleration = 0;
       }
     } else {
-      this.velocity =
-        this.acceleration =
-        this.angularVelocity =
-        this.angularAcceleration =
-          0;
+      this.velocity = this.acceleration = 0;
     }
 
     this.speed = Math.abs(this.velocity * 60);
