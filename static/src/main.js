@@ -2,9 +2,9 @@ import { Car } from './car.js';
 import { GameMap } from './map.js';
 import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
-import { generateMaze, generateBorder } from './mapGenerator.js';
+import { generateBorder } from './mapGenerator.js';
 import * as db from './db.js';
-import { followPath, aStar, sendAction } from './autopilot/index.js';
+import { sendAction } from './autopilot/index.js';
 import { CONTROL_API_URL, TELEMETRY_API_URL } from './config.js';
 
 // 1 Pixel entspricht dieser Anzahl Zentimeter
@@ -15,8 +15,6 @@ const ctx = canvas.getContext('2d');
 const typeSelect = document.getElementById('drawType');
 const sizeInput = document.getElementById('squareSize');
 const removeCheckbox = document.getElementById('removeMode');
-const generateMazeBtn = document.getElementById('generateMaze');
-const calcPathBtn = document.getElementById('calcPathBtn');
 const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
 const findCarBtn = document.getElementById('findCarBtn');
 const canvasContainer = document.getElementById('canvasContainer');
@@ -315,7 +313,6 @@ if (csvMapUrl) {
     cellCmInput.value = Math.round(gameMap.cellSize * CM_PER_PX);
     updateObstacleOptions();
     refreshCarObjects();
-    pathCells = [];
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
@@ -333,7 +330,6 @@ let dragY = 0;
 let lastPaintX = 0;
 let lastPaintY = 0;
 let targetMarker = gameMap.target;
-let pathCells = [];
 let cornerPoints = [];
 
 function renumberCornerPoints() {
@@ -364,7 +360,6 @@ function respawnTarget() {
     if (!collides) {
       targetMarker = temp;
       gameMap.target = targetMarker;
-      pathCells = [];
       break;
     }
   }
@@ -447,7 +442,6 @@ function paintCell(x, y) {
     }
   }
   refreshCarObjects();
-  pathCells = [];
 }
 
 function addLine(a, b, size) {
@@ -491,7 +485,6 @@ function connectCorners() {
   }
   cornerPoints = [];
   refreshCarObjects();
-  pathCells = [];
 }
 
 window.addEventListener('resize', resizeCanvas);
@@ -584,7 +577,6 @@ canvas.addEventListener('mouseup', () => {
     targetMarker = new Target(dragX, dragY, previewSize);
     gameMap.target = targetMarker;
     refreshCarObjects();
-    pathCells = [];
   } else if (selected === 'corner') {
     if (removeCheckbox.checked) {
       const idx = cornerPoints.findIndex((p) => p.x === dragX && p.y === dragY);
@@ -715,18 +707,6 @@ function loop() {
   if (targetMarker) {
     targetMarker.draw(ctx);
   }
-  if (pathCells.length) {
-    ctx.strokeStyle = 'blue';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    pathCells.forEach((p, i) => {
-      const px = p.x * CELL_SIZE + CELL_SIZE / 2;
-      const py = p.y * CELL_SIZE + CELL_SIZE / 2;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    });
-    ctx.stroke();
-  }
   if (
     isDragging &&
     typeSelect.value === 'obstacle' &&
@@ -816,7 +796,6 @@ function loadMapFile(e) {
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
     refreshCarObjects();
-    pathCells = [];
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
@@ -832,7 +811,6 @@ function loadMapCsv(e) {
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
     refreshCarObjects();
-    pathCells = [];
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
@@ -840,9 +818,6 @@ function loadMapCsv(e) {
 }
 
 if (editorMode) {
-  generateMazeBtn.addEventListener('click', () =>
-    generateMaze(gameMap, respawnTarget),
-  );
   if (connectCornersBtn)
     connectCornersBtn.addEventListener('click', connectCorners);
 
@@ -903,29 +878,11 @@ if (editorMode) {
     targetMarker = null;
     refreshCarObjects();
     resizeCanvas();
-    pathCells = [];
     generateBorder(gameMap, respawnTarget);
     updateObstacleOptions();
   });
 }
 
-calcPathBtn.addEventListener('click', () => {
-  if (!targetMarker) return;
-  const start = {
-    x: Math.floor((car.posX + car.imgWidth / 2) / CELL_SIZE),
-    y: Math.floor((car.posY + car.imgHeight / 2) / CELL_SIZE),
-  };
-  const goal = {
-    x: Math.floor(targetMarker.x / CELL_SIZE),
-    y: Math.floor(targetMarker.y / CELL_SIZE),
-  };
-  start.x = Math.min(start.x, gameMap.cols - 2);
-  start.y = Math.min(start.y, gameMap.rows - 2);
-  goal.x = Math.min(goal.x, gameMap.cols - 2);
-  goal.y = Math.min(goal.y, gameMap.rows - 2);
-  pathCells = aStar(start, goal, gameMap);
-  followPath(car, pathCells, CELL_SIZE);
-});
 
 toggleHitboxesBtn.addEventListener('click', () => {
   showHitboxes = !showHitboxes;
