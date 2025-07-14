@@ -1,36 +1,70 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Befehlsfolge erstellen</title>
-  <style>
-    body{font-family:Arial,sans-serif;background:#111;color:#eee;margin:0;padding:20px;}
-    label,button,select,input{font-size:16px;padding:5px;margin-right:5px;}
-    table{border-collapse:collapse;width:100%;margin-top:10px;}
-    th,td{border:1px solid #555;padding:5px;text-align:left;}
-  </style>
-</head>
-<body>
-  <h1>Befehlsfolge erstellen</h1>
-  <div>
-    <label>Name:<input id="seqName" type="text"></label>
-    <label>Format:
-      <select id="seqFormat">
-        <option value="csv">CSV</option>
-        <option value="ros">ROS</option>
-      </select>
-    </label>
-    <button id="addStep">Schritt hinzufügen</button>
-    <button id="addCond">Bedingung hinzufügen</button>
-    <button id="addLoop">Wiederholung hinzufügen</button>
-    <button id="saveSeq">Speichern</button>
-  </div>
-  <table id="stepsTbl">
-    <thead>
-      <tr><th>Aktion</th><th>Wert</th><th></th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <script type="module" src="{{ url_for('static', filename='src/sequenceEditor.js') }}"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Befehlsfolge erstellen</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #111;
+        color: #eee;
+        margin: 0;
+        padding: 20px;
+      }
+      label,
+      button,
+      select,
+      input {
+        font-size: 16px;
+        padding: 5px;
+        margin-right: 5px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #555;
+        padding: 5px;
+        text-align: left;
+      }
+      tbody tr {
+        cursor: move;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Befehlsfolge erstellen</h1>
+    <div>
+      <label>Name:<input id="seqName" type="text" /></label>
+      <label
+        >Format:
+        <select id="seqFormat">
+          <option value="csv">CSV</option>
+          <option value="ros">ROS</option>
+        </select>
+      </label>
+      <button id="addStep">Schritt hinzufügen</button>
+      <button id="addCond">Bedingung hinzufügen</button>
+      <button id="addLoop">Wiederholung hinzufügen</button>
+      <button id="saveSeq">Speichern</button>
+    </div>
+    <p>Schritte können per Drag &amp; Drop sortiert werden.</p>
+    <table id="stepsTbl">
+      <thead>
+        <tr>
+          <th>Aktion</th>
+          <th>Wert</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='src/sequenceEditor.js') }}"
+    ></script>
+  </body>
 </html>

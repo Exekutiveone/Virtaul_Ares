@@ -4,6 +4,29 @@ const addCondBtn = document.getElementById('addCond');
 const addLoopBtn = document.getElementById('addLoop');
 const saveBtn = document.getElementById('saveSeq');
 
+let draggedRow = null;
+
+tblBody.addEventListener('dragstart', (e) => {
+  const tr = e.target.closest('tr');
+  if (!tr) return;
+  draggedRow = tr;
+  e.dataTransfer.effectAllowed = 'move';
+});
+
+tblBody.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const tr = e.target.closest('tr');
+  if (!draggedRow || !tr || draggedRow === tr) return;
+  const rect = tr.getBoundingClientRect();
+  const next = e.clientY - rect.top > rect.height / 2;
+  tblBody.insertBefore(draggedRow, next ? tr.nextSibling : tr);
+});
+
+tblBody.addEventListener('drop', (e) => {
+  e.preventDefault();
+  draggedRow = null;
+});
+
 function createSelect(action) {
   const sel = document.createElement('select');
   sel.className = 'action';
@@ -35,6 +58,7 @@ function updateInput(tr) {
 
 function addRow(action = 'forward', value = 1) {
   const tr = document.createElement('tr');
+  tr.draggable = true;
   const select = createSelect(action);
   const input = document.createElement('input');
   input.type = 'number';
@@ -61,6 +85,7 @@ function addRow(action = 'forward', value = 1) {
 
 function addCondRow() {
   const tr = document.createElement('tr');
+  tr.draggable = true;
   tr.className = 'condRow';
   const td1 = document.createElement('td');
   const td2 = document.createElement('td');
@@ -120,6 +145,7 @@ function addCondRow() {
 
 function addLoopRow() {
   const tr = document.createElement('tr');
+  tr.draggable = true;
   tr.className = 'loopRow';
   const td1 = document.createElement('td');
   const td2 = document.createElement('td');
@@ -161,9 +187,12 @@ addRow();
 saveBtn.addEventListener('click', async () => {
   const name = document.getElementById('seqName').value.trim();
   const format = document.getElementById('seqFormat').value;
-  if (!name) { alert('Name fehlt'); return; }
+  if (!name) {
+    alert('Name fehlt');
+    return;
+  }
   const steps = [];
-  tblBody.querySelectorAll('tr').forEach(tr => {
+  tblBody.querySelectorAll('tr').forEach((tr) => {
     if (tr.classList.contains('condRow')) {
       const sensor = tr.querySelector('.sensor').value;
       const op = tr.querySelector('.op').value;
@@ -188,15 +217,18 @@ saveBtn.addEventListener('click', async () => {
       if (action && !isNaN(val)) steps.push({ action, duration: val });
     }
   });
-  if (!steps.length) { alert('Keine Schritte'); return; }
+  if (!steps.length) {
+    alert('Keine Schritte');
+    return;
+  }
   const res = await fetch('/api/sequences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({name, format, steps})
+    body: JSON.stringify({ name, format, steps }),
   });
   if (res.ok) {
     alert('Gespeichert');
-    tblBody.innerHTML='';
+    tblBody.innerHTML = '';
     addRow();
   } else {
     alert('Fehler beim Speichern');
