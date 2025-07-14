@@ -216,6 +216,12 @@ let targetMarker = gameMap.target;
 let pathCells = [];
 let cornerPoints = [];
 
+function renumberCornerPoints() {
+  cornerPoints.forEach((p, i) => {
+    p.id = i + 1;
+  });
+}
+
 function refreshCarObjects() {
   // Only obstacles should block the car. The target is handled
   // separately so the car can pass through it.
@@ -321,8 +327,9 @@ function addLine(a, b, size) {
 function connectCorners() {
   if (cornerPoints.length < 2) return;
   const size = parseInt(sizeInput.value) * CELL_SIZE;
-  for (let i = 1; i < cornerPoints.length; i++) {
-    addLine(cornerPoints[i - 1], cornerPoints[i], size);
+  const sorted = cornerPoints.slice().sort((a, b) => a.id - b.id);
+  for (let i = 1; i < sorted.length; i++) {
+    addLine(sorted[i - 1], sorted[i], size);
   }
   cornerPoints = [];
   refreshCarObjects();
@@ -375,10 +382,14 @@ canvas.addEventListener('mouseup', () => {
   } else if (selected === 'corner') {
     if (removeCheckbox.checked) {
       const idx = cornerPoints.findIndex((p) => p.x === dragX && p.y === dragY);
-      if (idx !== -1) cornerPoints.splice(idx, 1);
+      if (idx !== -1) {
+        cornerPoints.splice(idx, 1);
+        renumberCornerPoints();
+      }
     } else {
-      if (!cornerPoints.some((p) => p.x === dragX && p.y === dragY))
-        cornerPoints.push({ x: dragX, y: dragY });
+      if (!cornerPoints.some((p) => p.x === dragX && p.y === dragY)) {
+        cornerPoints.push({ x: dragX, y: dragY, id: cornerPoints.length + 1 });
+      }
     }
   }
   isDragging = false;
@@ -487,6 +498,13 @@ function loop() {
   for (const p of cornerPoints) {
     ctx.fillStyle = 'red';
     ctx.fillRect(p.x, p.y, previewSize, previewSize);
+    if (p.id !== undefined) {
+      ctx.fillStyle = 'black';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.id, p.x + previewSize / 2, p.y + previewSize / 2);
+    }
   }
   if (targetMarker) {
     targetMarker.draw(ctx);
