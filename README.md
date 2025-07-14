@@ -61,3 +61,12 @@ You can create such conditional sequences directly in the dashboard under
 `/sequence`. Besides the normal **Schritt hinzufügen** button there is now a
 **Bedingung hinzufügen** option which lets you pick a sensor, comparison and the
 actions for the *then* and *else* branches.
+
+You can also repeat actions multiple times using a simple `for` statement:
+
+```
+for 3 forward 1
+```
+
+This executes the `forward` command three times for one second each. In the
+sequence editor this can be added via the **Wiederholung hinzufügen** button.

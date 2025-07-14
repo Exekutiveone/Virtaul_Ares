@@ -114,6 +114,8 @@ def sequences_api():
         for s in steps:
             if 'line' in s:
                 lines.append(s['line'])
+            elif 'repeat' in s:
+                lines.append(f"for {s['repeat']} {s['action']} {s['duration']}")
             else:
                 if fmt == 'ros':
                     lines.append(f"{s['action']} {s['duration']}")

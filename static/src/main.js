@@ -159,14 +159,20 @@ async function runSequence(file, format) {
         else: { action: a2, duration: parseFloat(d2) },
       });
     } else {
-      let action, dur;
-      if (format === 'csv') {
-        [action, dur] = line.split(',');
+      const forMatch = line.match(/^for\s+(\d+)\s+(\w+)\s+(\d+(?:\.\d+)?)/i);
+      if (forMatch) {
+        const [, cnt, act, dur] = forMatch;
+        steps.push({ action: act, duration: parseFloat(dur), repeat: parseInt(cnt) });
       } else {
-        [action, dur] = line.split(/\s+/);
+        let action, dur;
+        if (format === 'csv') {
+          [action, dur] = line.split(',');
+        } else {
+          [action, dur] = line.split(/\s+/);
+        }
+        dur = parseFloat(dur);
+        if (action && !isNaN(dur)) steps.push({ action, duration: dur });
       }
-      dur = parseFloat(dur);
-      if (action && !isNaN(dur)) steps.push({ action, duration: dur });
     }
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -179,9 +185,12 @@ async function runSequence(file, format) {
         : step.else;
       curr = target;
     }
-    await sendAction(car, curr.action);
-    await sleep(curr.duration * 1000);
-    await sendAction(car, 'stop');
+    const reps = curr.repeat || 1;
+    for (let i = 0; i < reps; i++) {
+      await sendAction(car, curr.action);
+      await sleep(curr.duration * 1000);
+      await sendAction(car, 'stop');
+    }
   }
 }
 
