@@ -159,7 +159,12 @@ async function pollControl() {
     const res = await fetch(CONTROL_API_URL);
     if (!res.ok) return;
     const data = await res.json();
-    if (data.action) car.setKeysFromAction(data.action);
+    if (!data.action) return;
+    if (data.action === 'next_map') {
+      loadMapByIndex(currentMapIndex + 1);
+    } else {
+      car.setKeysFromAction(data.action);
+    }
   } catch (err) {
     console.error('pollControl failed', err);
   }

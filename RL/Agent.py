@@ -7,7 +7,7 @@ import csv
 from datetime import datetime
 import requests
 
-ACTIONS = ["forward", "left", "right", "backward", "stop"]
+ACTIONS = ["forward", "left", "right", "backward", "stop", "next_map"]
 # Added map coverage as part of the state
 STATE_SIZE = 7
 ACTION_SIZE = len(ACTIONS)
@@ -16,6 +16,8 @@ ACTION_SIZE = len(ACTIONS)
 class DummyEnv:
     def __init__(self):
         self.night_mode = False
+        self.map_index = 0
+        self.map_switched = False
         self.reset()
 
     def reset(self):
@@ -26,6 +28,7 @@ class DummyEnv:
         self.rpm = 100
         self.gyro = 0
         self.night_mode = False
+        self.map_switched = False
 
     def get_state(self):
         dist_front = max(self.goal - self.position, 0)
@@ -45,6 +48,7 @@ class DummyEnv:
 
     def send_action(self, action_index):
         action = ACTIONS[action_index]
+        self.map_switched = False
         if action == "forward":
             self.position += 1
         elif action == "backward":
@@ -55,6 +59,13 @@ class DummyEnv:
             self.gyro -= 10
         elif action == "right":
             self.gyro += 10
+        elif action == "next_map":
+            coverage = self.position / self.goal if self.goal else 0.0
+            if coverage >= 0.5:
+                self.map_index += 1
+                self.reset()
+                self.done = True
+                self.map_switched = True
 
         if self.position >= self.goal:
             self.done = True
@@ -68,6 +79,9 @@ class DummyEnv:
         else:
             reward = state[0] - next_state[0]
         reward += coverage_gain * 5
+        if self.map_switched:
+            reward += 20
+            self.map_switched = False
         if next_state[6] >= 0.5 and not self.night_mode:
             self.night_mode = True
             print("Night mode activated (DummyEnv)")
@@ -81,10 +95,12 @@ class ServerEnv:
         self.base_url = base_url.rstrip("/")
         self.done = False
         self.night_mode = False
+        self.map_switched = False
 
     def reset(self):
         self.done = False
         self.night_mode = False
+        self.map_switched = False
         return self.get_state()
 
     def get_state(self):
@@ -124,6 +140,21 @@ class ServerEnv:
 
     def send_action(self, action_index):
         action = ACTIONS[action_index]
+        self.map_switched = False
+        if action == "next_map":
+            cov = self.get_state()[6]
+            if cov >= 0.5:
+                try:
+                    requests.post(
+                        f"{self.base_url}/api/control",
+                        json={"action": "next_map"},
+                        timeout=5,
+                    )
+                except Exception:
+                    pass
+                self.map_switched = True
+                self.done = True
+            return
         try:
             requests.post(
                 f"{self.base_url}/api/control",
@@ -140,6 +171,9 @@ class ServerEnv:
         else:
             reward = state[0] - next_state[0]
         reward += coverage_gain * 5
+        if self.map_switched:
+            reward += 20
+            self.map_switched = False
         if next_state[6] >= 0.5 and not self.night_mode:
             self.night_mode = True
             print("Night mode activated (ServerEnv)")
