@@ -35,3 +35,24 @@ database for storing maps has been removed, so all map management now happens
 through file download and upload only. When editing a map that was loaded from
 the server's CSV list you can use the **CSV überschreiben** button to overwrite
 the original file instead of downloading a new one.
+
+## Command sequences
+
+Sequences of actions can be stored under `static/sequences`. Each line of a
+sequence normally consists of an action and a duration in seconds:
+
+```
+forward,1
+left,0.5
+```
+
+It is also possible to use conditional statements based on the sensor values.
+An example line looks like this:
+
+```
+if front < 50 then backward 1 else forward 1
+```
+
+The available sensor names are `front` (red LiDAR), `left`, `right` and `back`
+(blue sonar). When running the sequence the condition is evaluated and the
+corresponding branch is executed.

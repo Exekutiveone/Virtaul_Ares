@@ -114,6 +114,33 @@ async function loadSequences() {
   }
 }
 
+function getSensorValue(name) {
+  name = name.toLowerCase();
+  if (name === 'front' || name === 'red') return car.frontDistance;
+  if (name === 'left') return car.leftDistance;
+  if (name === 'right') return car.rightDistance;
+  if (name === 'back' || name === 'rear') return car.rearDistance;
+  return Infinity;
+}
+
+function evaluateCondition(val, op, target) {
+  switch (op) {
+    case '<':
+      return val < target;
+    case '>':
+      return val > target;
+    case '<=':
+      return val <= target;
+    case '>=':
+      return val >= target;
+    case '==':
+      return val == target;
+    case '!=':
+      return val != target;
+  }
+  return false;
+}
+
 async function runSequence(file, format) {
   if (!file) return;
   const res = await fetch('/static/sequences/' + encodeURIComponent(file));
@@ -123,19 +150,37 @@ async function runSequence(file, format) {
   const lines = text.trim().split(/\r?\n/);
   for (const line of lines) {
     if (!line) continue;
-    let action, dur;
-    if (format === 'csv') {
-      [action, dur] = line.split(',');
+    const ifMatch = line.match(/^if\s+(\w+)\s*(<=|>=|==|!=|<|>)\s*(\d+(?:\.\d+)?)\s+then\s+(\w+)\s+(\d+(?:\.\d+)?)\s+else\s+(\w+)\s+(\d+(?:\.\d+)?)/i);
+    if (ifMatch) {
+      const [, sensor, op, val, a1, d1, a2, d2] = ifMatch;
+      steps.push({
+        condition: { sensor, op, value: parseFloat(val) },
+        then: { action: a1, duration: parseFloat(d1) },
+        else: { action: a2, duration: parseFloat(d2) },
+      });
     } else {
-      [action, dur] = line.split(/\s+/);
+      let action, dur;
+      if (format === 'csv') {
+        [action, dur] = line.split(',');
+      } else {
+        [action, dur] = line.split(/\s+/);
+      }
+      dur = parseFloat(dur);
+      if (action && !isNaN(dur)) steps.push({ action, duration: dur });
     }
-    dur = parseFloat(dur);
-    if (action && !isNaN(dur)) steps.push({ action, duration: dur });
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (const step of steps) {
-    await sendAction(car, step.action);
-    await sleep(step.duration * 1000);
+    let curr = step;
+    if (step.condition) {
+      const val = getSensorValue(step.condition.sensor);
+      const target = evaluateCondition(val, step.condition.op, step.condition.value)
+        ? step.then
+        : step.else;
+      curr = target;
+    }
+    await sendAction(car, curr.action);
+    await sleep(curr.duration * 1000);
     await sendAction(car, 'stop');
   }
 }
@@ -568,6 +613,10 @@ function loop() {
   const br1 = car.drawKegel(91, 7, 150, -Math.PI / 2, 'blue', 8);
   const br2 = car.drawKegel(97, 7, 150, -Math.PI / 2, 'blue', 8);
   const bb = car.drawKegel(143, 37, 150, 0, 'blue', 8);
+  car.frontDistance = car.redConeLength;
+  car.leftDistance = Math.min(bl1, bl2);
+  car.rightDistance = Math.min(br1, br2);
+  car.rearDistance = bb;
   blueLeft1El.textContent = Math.round(bl1);
   blueLeft2El.textContent = Math.round(bl2);
   blueRight1El.textContent = Math.round(br1);
