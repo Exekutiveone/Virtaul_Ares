@@ -68,7 +68,9 @@ can drop items there.
 
 The editor also supports **while** loops with sensor conditions. A loop will
 continue executing its inner steps as long as the defined sensor comparison is
-true (e.g. `while front > 20`).
+true (e.g. `while front > 20`). Sequences that contain such loops or other
+conditional logic are stored in JSON format. When saving a sequence with loops,
+the editor automatically selects JSON to avoid API errors.
 
 Saved sequences can be reused inside new ones. When adding an "Ablauf einfügen"
 block the editor stores only a reference to the selected sequence. During
