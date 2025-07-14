@@ -22,6 +22,7 @@ const findCarBtn = document.getElementById('findCarBtn');
 const canvasContainer = document.getElementById('canvasContainer');
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
+const connectCornersBtn = document.getElementById('connectCorners');
 const loadMapCsvInput = document.getElementById('loadMapCsv');
 const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
 const sequenceSelect = document.getElementById('sequenceSelect');
@@ -213,6 +214,7 @@ let lastPaintX = 0;
 let lastPaintY = 0;
 let targetMarker = gameMap.target;
 let pathCells = [];
+let cornerPoints = [];
 
 function refreshCarObjects() {
   // Only obstacles should block the car. The target is handled
@@ -299,6 +301,34 @@ function paintCell(x, y) {
   pathCells = [];
 }
 
+function addLine(a, b, size) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const steps = Math.max(Math.abs(dx), Math.abs(dy)) / CELL_SIZE;
+  const stepX = Math.sign(dx) * CELL_SIZE;
+  const stepY = Math.sign(dy) * CELL_SIZE;
+  let x = a.x;
+  let y = a.y;
+  for (let i = 0; i <= steps; i++) {
+    if (!obstacles.some((o) => o.x === x && o.y === y && o.size === size)) {
+      obstacles.push(new Obstacle(x, y, size));
+    }
+    x += stepX;
+    y += stepY;
+  }
+}
+
+function connectCorners() {
+  if (cornerPoints.length < 2) return;
+  const size = parseInt(sizeInput.value) * CELL_SIZE;
+  for (let i = 1; i < cornerPoints.length; i++) {
+    addLine(cornerPoints[i - 1], cornerPoints[i], size);
+  }
+  cornerPoints = [];
+  refreshCarObjects();
+  pathCells = [];
+}
+
 window.addEventListener('resize', resizeCanvas);
 
 function updatePreview() {
@@ -325,7 +355,7 @@ canvas.addEventListener('mousedown', (e) => {
   isDragging = true;
   lastPaintX = dragX;
   lastPaintY = dragY;
-  if (typeSelect.value !== 'target') paintCell(dragX, dragY);
+  if (typeSelect.value === 'obstacle') paintCell(dragX, dragY);
 });
 
 canvas.addEventListener('mouseup', () => {
@@ -342,6 +372,14 @@ canvas.addEventListener('mouseup', () => {
     gameMap.target = targetMarker;
     refreshCarObjects();
     pathCells = [];
+  } else if (selected === 'corner') {
+    if (removeCheckbox.checked) {
+      const idx = cornerPoints.findIndex((p) => p.x === dragX && p.y === dragY);
+      if (idx !== -1) cornerPoints.splice(idx, 1);
+    } else {
+      if (!cornerPoints.some((p) => p.x === dragX && p.y === dragY))
+        cornerPoints.push({ x: dragX, y: dragY });
+    }
   }
   isDragging = false;
 });
@@ -362,7 +400,7 @@ canvas.addEventListener('mousemove', (e) => {
     Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
   dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
   if (
-    typeSelect.value !== 'target' &&
+    typeSelect.value === 'obstacle' &&
     (dragX !== lastPaintX || dragY !== lastPaintY)
   ) {
     paintCell(dragX, dragY);
@@ -446,6 +484,10 @@ function loop() {
     o.draw(ctx);
     if (showHitboxes && typeof o.drawHitbox === 'function') o.drawHitbox(ctx);
   }
+  for (const p of cornerPoints) {
+    ctx.fillStyle = 'red';
+    ctx.fillRect(p.x, p.y, previewSize, previewSize);
+  }
   if (targetMarker) {
     targetMarker.draw(ctx);
   }
@@ -461,7 +503,11 @@ function loop() {
     });
     ctx.stroke();
   }
-  if (isDragging && typeSelect.value !== 'target' && !removeCheckbox.checked) {
+  if (
+    isDragging &&
+    typeSelect.value === 'obstacle' &&
+    !removeCheckbox.checked
+  ) {
     ctx.strokeStyle = 'red';
     ctx.lineWidth = 2;
     ctx.strokeRect(dragX, dragY, previewSize, previewSize);
@@ -547,6 +593,8 @@ if (editorMode) {
   generateMazeBtn.addEventListener('click', () =>
     generateMaze(gameMap, respawnTarget),
   );
+  if (connectCornersBtn)
+    connectCornersBtn.addEventListener('click', connectCorners);
 
   document
     .getElementById('saveMap')

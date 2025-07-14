@@ -64,6 +64,7 @@
           <label>Typ:</label>
           <select id="drawType">
             <option value="obstacle">Quadrat</option>
+            <option value="corner">Eckpunkt</option>
             <option value="target">Target (grüner Punkt)</option>
           </select>
           <label>Größe:</label>
@@ -81,6 +82,7 @@
           <input type="checkbox" id="removeMode" />
         </div>
         <button id="generateMaze">Labyrinth generieren</button>
+        <button id="connectCorners">Eckpunkte verbinden</button>
       </div>
       <div class="cone-display">Rot: <span id="redLength">0</span> px</div>
       <div class="cone-display">Grün: <span id="greenLength">0</span> px</div>
