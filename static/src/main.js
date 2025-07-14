@@ -783,6 +783,12 @@ function loop() {
   blueRight1El.textContent = Math.round(br1);
   blueRight2El.textContent = Math.round(br2);
   blueBackEl.textContent = Math.round(bb);
+  const crashBtn = document.getElementById('crashIndicator');
+  if (car.frontDistance <= 1) {
+    crashBtn.style.display = 'inline-block';
+  } else {
+    crashBtn.style.display = 'none';
+  }
   speedEl.textContent = Math.round(car.speed);
   rpmEl.textContent = Math.round(car.rpm);
   gyroEl.textContent = car.gyro.toFixed(1);
