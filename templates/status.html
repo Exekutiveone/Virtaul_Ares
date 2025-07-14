@@ -20,9 +20,12 @@ async function refresh(){
   const s=await sRes.json();
   document.getElementById('state').textContent=JSON.stringify(s,null,2);
   const gRes=await fetch('/api/grid');
+  const gridEl=document.getElementById('grid');
   if(gRes.ok){
     const g=await gRes.json();
-    document.getElementById('grid').textContent=JSON.stringify(g,null,2);
+    gridEl.textContent=JSON.stringify(g,null,2);
+  }else{
+    gridEl.textContent='Keine Kartendaten verf\u00fcgbar';
   }
 }
 setInterval(refresh,1000);
