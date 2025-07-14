@@ -933,20 +933,44 @@ function centerOnCar(radiusCm = 500) {
 }
 
 function autoFollowCar(margin = 50) {
+  const viewW = canvasContainer.clientWidth / zoomScale;
   const viewH = canvasContainer.clientHeight / zoomScale;
-  if (canvas.height <= viewH) return;
-  const top = (car.posY - translateY) * zoomScale;
-  const bottom = (car.posY + car.imgHeight - translateY) * zoomScale;
-  if (bottom > canvasContainer.clientHeight - margin) {
-    translateY =
-      car.posY +
-      car.imgHeight -
-      (canvasContainer.clientHeight - margin) / zoomScale;
-    translateY = Math.min(translateY, canvas.height - viewH);
-    updateTransform();
-  } else if (top < margin) {
-    translateY = car.posY - margin / zoomScale;
-    translateY = Math.max(0, translateY);
+  let newX = translateX;
+  let newY = translateY;
+
+  if (canvas.width > viewW) {
+    const left = (car.posX - newX) * zoomScale;
+    const right = (car.posX + car.imgWidth - newX) * zoomScale;
+    if (right > canvasContainer.clientWidth - margin) {
+      newX =
+        car.posX +
+        car.imgWidth -
+        (canvasContainer.clientWidth - margin) / zoomScale;
+      newX = Math.min(newX, canvas.width - viewW);
+    } else if (left < margin) {
+      newX = car.posX - margin / zoomScale;
+      newX = Math.max(0, newX);
+    }
+  }
+
+  if (canvas.height > viewH) {
+    const top = (car.posY - newY) * zoomScale;
+    const bottom = (car.posY + car.imgHeight - newY) * zoomScale;
+    if (bottom > canvasContainer.clientHeight - margin) {
+      newY =
+        car.posY +
+        car.imgHeight -
+        (canvasContainer.clientHeight - margin) / zoomScale;
+      newY = Math.min(newY, canvas.height - viewH);
+    } else if (top < margin) {
+      newY = car.posY - margin / zoomScale;
+      newY = Math.max(0, newY);
+    }
+  }
+
+  if (newX !== translateX || newY !== translateY) {
+    translateX = newX;
+    translateY = newY;
     updateTransform();
   }
 }
