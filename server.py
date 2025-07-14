@@ -94,6 +94,11 @@ def sequence_page():
     return render_template('sequence.html')
 
 
+@app.route('/sequences')
+def sequence_list_page():
+    return render_template('sequences.html')
+
+
 @app.route('/api/sequences', methods=['GET', 'POST'])
 def sequences_api():
     if request.method == 'POST':
@@ -146,6 +151,43 @@ def sequences_api():
         return jsonify({'file': filename}), 201
     else:
         return jsonify(load_seq_list())
+
+
+@app.route('/api/sequences/<filename>', methods=['PUT', 'DELETE'])
+def update_sequence(filename):
+    secure_name = secure_filename(filename)
+    path = os.path.join(SEQUENCE_FOLDER, secure_name)
+
+    if request.method == 'DELETE':
+        if os.path.exists(path):
+            os.remove(path)
+        seq_list = load_seq_list()
+        seq_list = [s for s in seq_list if s['file'] != secure_name]
+        save_seq_list(seq_list)
+        return '', 204
+
+    if not os.path.exists(path):
+        return jsonify({'error': 'not found'}), 404
+
+    data = request.get_json(force=True)
+    new_name = data.get('name')
+    if not new_name:
+        return jsonify({'error': 'missing name'}), 400
+    base, ext = os.path.splitext(secure_name)
+    new_file = secure_filename(new_name)
+    if not new_file.endswith(ext):
+        new_file += ext
+    new_path = os.path.join(SEQUENCE_FOLDER, new_file)
+    os.rename(path, new_path)
+    seq_list = load_seq_list()
+    for entry in seq_list:
+        if entry['file'] == secure_name:
+            entry['file'] = new_file
+            entry['name'] = new_name
+            entry['created'] = datetime.utcnow().isoformat()
+            break
+    save_seq_list(seq_list)
+    return jsonify({'file': new_file}), 200
 
 
 @app.route('/api/csv-maps/<filename>', methods=['PUT', 'DELETE'])
