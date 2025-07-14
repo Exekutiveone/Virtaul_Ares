@@ -236,9 +236,13 @@ async function executeSteps(steps) {
     if (step.action) {
       const reps = step.repeat || 1;
       for (let i = 0; i < reps; i++) {
-        await sendAction(car, step.action);
-        await sleep(step.duration * 1000);
-        await sendAction(car, 'stop');
+        if (step.action === 'left' || step.action === 'right') {
+          await sendAction(car, step.action, step.duration);
+        } else {
+          await sendAction(car, step.action);
+          await sleep(step.duration * 1000);
+          await sendAction(car, 'stop');
+        }
       }
     } else if (step.condition || step.if) {
       const cond = step.condition || step.if;
