@@ -5,6 +5,8 @@ const addLoopBtn = document.getElementById('addLoop');
 const addWhileBtn = document.getElementById('addWhile');
 const addCallBtn = document.getElementById('addCall');
 const saveBtn = document.getElementById('saveSeq');
+const loadBtn = document.getElementById('loadSeq');
+const loadSelect = document.getElementById('seqLoadSelect');
 
 let sequenceList = [];
 
@@ -12,6 +14,16 @@ async function loadSequenceList() {
   const res = await fetch('/api/sequences');
   if (res.ok) {
     sequenceList = await res.json();
+    if (loadSelect) {
+      loadSelect.innerHTML = '<option value="">Neu...</option>';
+      sequenceList.forEach((s) => {
+        const opt = document.createElement('option');
+        opt.value = s.file;
+        opt.textContent = s.name;
+        opt.dataset.format = s.format || 'csv';
+        loadSelect.appendChild(opt);
+      });
+    }
   }
 }
 
@@ -98,7 +110,7 @@ function createActionNode(action = 'forward', value = 1) {
   return li;
 }
 
-function createIfNode() {
+function createIfNode(data = null) {
   const li = document.createElement('li');
   li.className = 'step if';
   li.draggable = true;
@@ -121,7 +133,7 @@ function createIfNode() {
   valInput.type = 'number';
   valInput.className = 'condVal';
   valInput.step = '0.1';
-  valInput.value = 30;
+  valInput.value = data?.value ?? 30;
   const del = document.createElement('button');
   del.textContent = 'x';
   del.className = 'del';
@@ -144,11 +156,17 @@ function createIfNode() {
 
   initDrag(thenList);
   initDrag(elseList);
+  if (data) {
+    sensorSel.value = data.sensor;
+    opSel.value = data.op;
+    buildSteps(data.then || [], thenList);
+    buildSteps(data.else || [], elseList);
+  }
   del.addEventListener('click', () => li.remove());
   return li;
 }
 
-function createLoopNode() {
+function createLoopNode(count = 2, steps = []) {
   const li = document.createElement('li');
   li.className = 'step loop';
   li.draggable = true;
@@ -157,7 +175,7 @@ function createLoopNode() {
   countInput.type = 'number';
   countInput.min = '1';
   countInput.className = 'loopCount';
-  countInput.value = 2;
+  countInput.value = count;
   const del = document.createElement('button');
   del.textContent = 'x';
   del.className = 'del';
@@ -167,11 +185,12 @@ function createLoopNode() {
   inner.className = 'steps nested';
   li.appendChild(inner);
   initDrag(inner);
+  if (steps) buildSteps(steps, inner);
   del.addEventListener('click', () => li.remove());
   return li;
 }
 
-function createWhileNode() {
+function createWhileNode(data = null) {
   const li = document.createElement('li');
   li.className = 'step while';
   li.draggable = true;
@@ -194,7 +213,7 @@ function createWhileNode() {
   valInput.type = 'number';
   valInput.className = 'condVal';
   valInput.step = '0.1';
-  valInput.value = 30;
+  valInput.value = data?.value ?? 30;
   const del = document.createElement('button');
   del.textContent = 'x';
   del.className = 'del';
@@ -204,11 +223,16 @@ function createWhileNode() {
   inner.className = 'steps nested';
   li.appendChild(inner);
   initDrag(inner);
+  if (data) {
+    sensorSel.value = data.sensor;
+    opSel.value = data.op;
+    buildSteps(data.steps || [], inner);
+  }
   del.addEventListener('click', () => li.remove());
   return li;
 }
 
-function createCallNode() {
+function createCallNode(file = '') {
   const li = document.createElement('li');
   li.className = 'step call';
   li.draggable = true;
@@ -224,8 +248,38 @@ function createCallNode() {
   del.textContent = 'x';
   del.className = 'del';
   li.append('Ablauf ', sel, del);
+  if (file) sel.value = file;
   del.addEventListener('click', () => li.remove());
   return li;
+}
+
+function createNodeFromData(step) {
+  if (step.action) return createActionNode(step.action, step.duration);
+  if (step.if)
+    return createIfNode({
+      sensor: step.if.sensor,
+      op: step.if.op,
+      value: step.if.value,
+      then: step.if.then,
+      else: step.if.else,
+    });
+  if (step.loop) return createLoopNode(step.loop.repeat, step.loop.steps);
+  if (step.while)
+    return createWhileNode({
+      sensor: step.while.sensor,
+      op: step.while.op,
+      value: step.while.value,
+      steps: step.while.steps,
+    });
+  if (step.call) return createCallNode(step.call);
+  return null;
+}
+
+function buildSteps(steps, container) {
+  steps.forEach((s) => {
+    const node = createNodeFromData(s);
+    if (node) container.appendChild(node);
+  });
 }
 
 function collectSteps(list) {
@@ -277,6 +331,24 @@ if (addCallBtn) addCallBtn.addEventListener('click', () => {
 loadSequenceList();
 initDrag(rootList);
 rootList.appendChild(createActionNode());
+
+if (loadBtn)
+  loadBtn.addEventListener('click', async () => {
+    const opt = loadSelect.options[loadSelect.selectedIndex];
+    if (!opt || !opt.value) return;
+    if (opt.dataset.format !== 'json' && !opt.value.endsWith('.json')) {
+      alert('Nur JSON Sequenzen können geladen werden');
+      return;
+    }
+    const res = await fetch('/static/sequences/' + encodeURIComponent(opt.value));
+    if (!res.ok) {
+      alert('Fehler beim Laden');
+      return;
+    }
+    const steps = await res.json();
+    rootList.innerHTML = '';
+    buildSteps(steps, rootList);
+  });
 
 saveBtn.addEventListener('click', async () => {
   const name = document.getElementById('seqName').value.trim();

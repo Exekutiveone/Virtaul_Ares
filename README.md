@@ -74,3 +74,7 @@ Saved sequences can be reused inside new ones. When adding an "Ablauf einfügen"
 block the editor stores only a reference to the selected sequence. During
 execution the referenced file is loaded and its steps are executed. This allows
 modularizing complex behaviours.
+
+Existing sequences saved in JSON format can be loaded back into the editor
+through the new **Vorhanden** drop-down and the **Laden** button. This makes it
+possible to edit and extend previously created command sequences.
