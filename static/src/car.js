@@ -329,7 +329,12 @@ export class Car {
       if (o.radius != null) {
         res = this.rayCircleIntersectionDetail(fx, fy, angle, o);
       } else {
-        const rect = { x: o.x, y: o.y, w: o.size, h: o.size };
+        const rect = {
+          x: o.x,
+          y: o.y,
+          w: o.w != null ? o.w : o.size,
+          h: o.h != null ? o.h : o.size,
+        };
         res = this.rayRectIntersectionDetail(fx, fy, angle, rect);
       }
       if (res.dist < minDist) {
