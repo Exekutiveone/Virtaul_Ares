@@ -71,6 +71,12 @@ export class Car {
       right: 'ArrowRight',
       stop: null,
     };
+
+    // Last measured sensor distances
+    this.frontDistance = Infinity;
+    this.leftDistance = Infinity;
+    this.rightDistance = Infinity;
+    this.rearDistance = Infinity;
   }
 
   setKeysFromAction(action) {
