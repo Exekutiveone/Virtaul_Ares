@@ -384,6 +384,35 @@ function refreshCarObjects() {
   // Only obstacles should block the car. The target is handled
   // separately so the car can pass through it.
   car.objects = obstacles.slice();
+
+  // Add map boundaries so the car's sensors and collision
+  // detection account for the outer margin. Boundaries are
+  // represented as simple rectangles with an intersectsRect
+  // method so they behave like normal obstacles.
+  const width = gameMap.cols * gameMap.cellSize;
+  const height = gameMap.rows * gameMap.cellSize;
+  const m = gameMap.margin;
+  if (m > 0) {
+    const bounds = [
+      { x: 0, y: 0, w: width, h: m },
+      { x: 0, y: height - m, w: width, h: m },
+      { x: 0, y: 0, w: m, h: height },
+      { x: width - m, y: 0, w: m, h: height },
+    ];
+    for (const b of bounds) {
+      car.objects.push({
+        ...b,
+        intersectsRect(x, y, w, h) {
+          return !(
+            x + w < this.x ||
+            x > this.x + this.w ||
+            y + h < this.y ||
+            y > this.y + this.h
+          );
+        },
+      });
+    }
+  }
 }
 
 function respawnTarget() {
