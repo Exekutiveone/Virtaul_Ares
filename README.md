@@ -60,3 +60,8 @@ for 3 forward 1
 
 This executes the `forward` command three times for one second each. In the
 sequence editor this can be added via the **Wiederholung hinzufügen** button.
+
+Steps can be rearranged and nested via drag & drop. Simply drag an action or
+condition onto the desired target list, e.g. into the *then* or *else* block or
+inside a loop. Empty lists are shown with a dashed border to indicate that you
+can drop items there.

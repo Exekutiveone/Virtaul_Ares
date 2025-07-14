@@ -120,14 +120,14 @@ function createIfNode() {
   const thenDiv = document.createElement('div');
   thenDiv.textContent = 'dann:';
   const thenList = document.createElement('ul');
-  thenList.className = 'steps then';
+  thenList.className = 'steps then nested';
   thenDiv.appendChild(thenList);
   li.appendChild(thenDiv);
 
   const elseDiv = document.createElement('div');
   elseDiv.textContent = 'sonst:';
   const elseList = document.createElement('ul');
-  elseList.className = 'steps else';
+  elseList.className = 'steps else nested';
   elseDiv.appendChild(elseList);
   li.appendChild(elseDiv);
 
@@ -153,7 +153,7 @@ function createLoopNode() {
   header.append('for ', countInput, 'x ', del);
   li.appendChild(header);
   const inner = document.createElement('ul');
-  inner.className = 'steps';
+  inner.className = 'steps nested';
   li.appendChild(inner);
   initDrag(inner);
   del.addEventListener('click', () => li.remove());
