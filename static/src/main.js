@@ -296,6 +296,10 @@ if (!editorMode) {
   const e2 = document.getElementById('editorTools2');
   if (e1) e1.style.display = 'none';
   if (e2) e2.style.display = 'none';
+} else {
+  document.querySelectorAll('.cone-display').forEach((el) => {
+    el.style.display = 'none';
+  });
 }
 if (csvMapUrl) {
   if (csvMapUrl.startsWith('/static/maps/')) {
