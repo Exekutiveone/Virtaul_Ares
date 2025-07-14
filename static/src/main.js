@@ -20,6 +20,10 @@ const calcPathBtn = document.getElementById('calcPathBtn');
 const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
 const findCarBtn = document.getElementById('findCarBtn');
 const canvasContainer = document.getElementById('canvasContainer');
+const slamCheckbox = document.getElementById('slamMode');
+const slamCanvas = document.getElementById('slamCanvas');
+const slamCtx = slamCanvas.getContext('2d');
+let slamMode = false;
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
 const connectCornersBtn = document.getElementById('connectCorners');
@@ -49,11 +53,31 @@ const gyroEl = document.getElementById('gyro');
 const cellCmInput = document.getElementById('gridCellCm');
 const widthCmInput = document.getElementById('gridWidth');
 const heightCmInput = document.getElementById('gridHeight');
+const params = new URLSearchParams(window.location.search);
+const csvMapUrl = params.get('map');
+const editorMode = params.has('editor');
 
 if (controlModeSelect) {
   controlModeSelect.addEventListener('change', () => {
     controlMode = controlModeSelect.value;
     car.autopilot = controlMode === 'mouse';
+  });
+}
+
+if (slamCheckbox) {
+  if (!editorMode) slamCheckbox.parentElement.style.display = 'none';
+  slamCheckbox.addEventListener('change', () => {
+    slamMode = slamCheckbox.checked;
+    if (slamMode) {
+      slamCanvas.width = canvas.width;
+      slamCanvas.height = canvas.height;
+      slamCanvas.style.display = 'block';
+      slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+      slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+    } else {
+      slamCanvas.style.display = 'none';
+      slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
+    }
   });
 }
 
@@ -223,9 +247,6 @@ const initialRows = Math.max(
 let gameMap = new GameMap(initialCols, initialRows, CELL_SIZE);
 let previewSize;
 updateObstacleOptions();
-const params = new URLSearchParams(window.location.search);
-const csvMapUrl = params.get('map');
-const editorMode = params.has('editor');
 let currentCsvFile = null;
 if (!editorMode) {
   const e1 = document.getElementById('editorTools');
@@ -330,11 +351,18 @@ function updateObstacleOptions() {
 function resizeCanvas() {
   canvas.width = gameMap.cols * CELL_SIZE;
   canvas.height = gameMap.rows * CELL_SIZE;
+  slamCanvas.width = canvas.width;
+  slamCanvas.height = canvas.height;
+  if (slamMode) {
+    slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+    slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+  }
   updateTransform();
 }
 
 function updateTransform() {
   canvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
+  slamCanvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
 }
 
 function paintCell(x, y) {
@@ -406,6 +434,13 @@ function connectCorners() {
 }
 
 window.addEventListener('resize', resizeCanvas);
+
+function revealCone(x, y, length, angle, baseWidth) {
+  slamCtx.save();
+  slamCtx.globalCompositeOperation = 'destination-out';
+  car.drawKegel(x, y, length, angle, '#000', baseWidth, slamCtx);
+  slamCtx.restore();
+}
 
 function updatePreview() {
   updateObstacleOptions();
@@ -622,6 +657,26 @@ function loop() {
   const br1 = car.drawKegel(91, 7, 150, -Math.PI / 2, 'blue', 8);
   const br2 = car.drawKegel(97, 7, 150, -Math.PI / 2, 'blue', 8);
   const bb = car.drawKegel(143, 37, 150, 0, 'blue', 8);
+  if (slamMode) {
+    revealCone(18, 40, 700, Math.PI, 6);
+    revealCone(45, 40, 400, Math.PI, 140);
+    for (const [x, y] of [
+      [65, 7],
+      [72, 7],
+      [91, 7],
+      [97, 7],
+    ])
+      revealCone(x, y, 150, -Math.PI / 2, 8);
+    for (const [x, y] of [
+      [64, 74],
+      [71, 74],
+      [90, 74],
+      [97, 74],
+    ])
+      revealCone(x, y, 150, Math.PI / 2, 8);
+    revealCone(143, 37, 150, 0, 8);
+    revealCone(143, 43, 150, 0, 8);
+  }
   car.frontDistance = car.redConeLength;
   car.leftDistance = Math.min(bl1, bl2);
   car.rightDistance = Math.min(br1, br2);

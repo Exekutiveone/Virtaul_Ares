@@ -50,6 +50,12 @@
         overflow: hidden;
         position: relative;
       }
+      #slamCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+      }
       canvas {
         display: block;
         background: #fff;
@@ -151,6 +157,7 @@
       </div>
       <button id="calcPathBtn">Optimal Pathfinder</button>
       <button id="toggleHitboxes">Hitboxen anzeigen</button>
+      <label>SLAM <input type="checkbox" id="slamMode" /></label>
       <button id="findCarBtn">Auto finden</button>
       <label>Befehlsfolge:
         <select id="sequenceSelect"></select>
@@ -198,6 +205,7 @@
       <input type="file" id="loadMapCsv" style="display:none" accept="text/csv" />
     <div id="canvasContainer">
       <canvas id="canvas"></canvas>
+      <canvas id="slamCanvas"></canvas>
     </div>
     <script
       type="module"
