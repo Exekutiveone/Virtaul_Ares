@@ -2,7 +2,18 @@ const rootList = document.querySelector('#steps');
 const addBtn = document.getElementById('addStep');
 const addCondBtn = document.getElementById('addCond');
 const addLoopBtn = document.getElementById('addLoop');
+const addWhileBtn = document.getElementById('addWhile');
+const addCallBtn = document.getElementById('addCall');
 const saveBtn = document.getElementById('saveSeq');
+
+let sequenceList = [];
+
+async function loadSequenceList() {
+  const res = await fetch('/api/sequences');
+  if (res.ok) {
+    sequenceList = await res.json();
+  }
+}
 
 let draggedElem = null;
 
@@ -160,6 +171,63 @@ function createLoopNode() {
   return li;
 }
 
+function createWhileNode() {
+  const li = document.createElement('li');
+  li.className = 'step while';
+  li.draggable = true;
+  const header = document.createElement('div');
+  const sensorSel = document.createElement('select');
+  sensorSel.className = 'sensor';
+  sensorSel.innerHTML = `
+    <option value="front">Front</option>
+    <option value="left">Links</option>
+    <option value="right">Rechts</option>
+    <option value="back">Hinten</option>`;
+  const opSel = document.createElement('select');
+  opSel.className = 'op';
+  opSel.innerHTML = `
+    <option value="<">&lt;</option>
+    <option value="<=">&lt;=</option>
+    <option value=">">&gt;</option>
+    <option value=">=">&gt;=</option>`;
+  const valInput = document.createElement('input');
+  valInput.type = 'number';
+  valInput.className = 'condVal';
+  valInput.step = '0.1';
+  valInput.value = 30;
+  const del = document.createElement('button');
+  del.textContent = 'x';
+  del.className = 'del';
+  header.append('while ', sensorSel, opSel, valInput, ' cm ', del);
+  li.appendChild(header);
+  const inner = document.createElement('ul');
+  inner.className = 'steps nested';
+  li.appendChild(inner);
+  initDrag(inner);
+  del.addEventListener('click', () => li.remove());
+  return li;
+}
+
+function createCallNode() {
+  const li = document.createElement('li');
+  li.className = 'step call';
+  li.draggable = true;
+  const sel = document.createElement('select');
+  sel.className = 'seqSelect';
+  sequenceList.forEach((s) => {
+    const opt = document.createElement('option');
+    opt.value = s.file;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+  const del = document.createElement('button');
+  del.textContent = 'x';
+  del.className = 'del';
+  li.append('Ablauf ', sel, del);
+  del.addEventListener('click', () => li.remove());
+  return li;
+}
+
 function collectSteps(list) {
   const steps = [];
   list.querySelectorAll(':scope > li.step').forEach((li) => {
@@ -180,6 +248,15 @@ function collectSteps(list) {
       const count = parseInt(li.querySelector('.loopCount').value);
       const inner = collectSteps(li.querySelector('ul.steps'));
       steps.push({ loop: { repeat: count, steps: inner } });
+    } else if (li.classList.contains('while')) {
+      const sensor = li.querySelector('.sensor').value;
+      const op = li.querySelector('.op').value;
+      const val = parseFloat(li.querySelector('.condVal').value);
+      const inner = collectSteps(li.querySelector('ul.steps'));
+      steps.push({ while: { sensor, op, value: val, steps: inner } });
+    } else if (li.classList.contains('call')) {
+      const file = li.querySelector('.seqSelect').value;
+      steps.push({ call: file });
     }
   });
   return steps;
@@ -188,7 +265,16 @@ function collectSteps(list) {
 addBtn.addEventListener('click', () => rootList.appendChild(createActionNode()));
 addCondBtn.addEventListener('click', () => rootList.appendChild(createIfNode()));
 if (addLoopBtn) addLoopBtn.addEventListener('click', () => rootList.appendChild(createLoopNode()));
+if (addWhileBtn) addWhileBtn.addEventListener('click', () => rootList.appendChild(createWhileNode()));
+if (addCallBtn) addCallBtn.addEventListener('click', () => {
+  if (sequenceList.length === 0) {
+    alert('Keine gespeicherten Abläufe');
+    return;
+  }
+  rootList.appendChild(createCallNode());
+});
 
+loadSequenceList();
 initDrag(rootList);
 rootList.appendChild(createActionNode());
 

@@ -65,3 +65,12 @@ Steps can be rearranged and nested via drag & drop. Simply drag an action or
 condition onto the desired target list, e.g. into the *then* or *else* block or
 inside a loop. Empty lists are shown with a dashed border to indicate that you
 can drop items there.
+
+The editor also supports **while** loops with sensor conditions. A loop will
+continue executing its inner steps as long as the defined sensor comparison is
+true (e.g. `while front > 20`).
+
+Saved sequences can be reused inside new ones. When adding an "Ablauf einfügen"
+block the editor stores only a reference to the selected sequence. During
+execution the referenced file is loaded and its steps are executed. This allows
+modularizing complex behaviours.
