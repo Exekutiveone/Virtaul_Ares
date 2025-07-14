@@ -1,2 +1,4 @@
-export const CONTROL_API_URL = 'http://localhost:5002/api/control';
-export const TELEMETRY_API_URL = 'http://127.0.0.1:5001/api/car';
+// Use relative URLs so the frontend works with the Flask server on port 5000
+// without any additional configuration.
+export const CONTROL_API_URL = '/api/control';
+export const TELEMETRY_API_URL = '/api/car';

@@ -4,28 +4,18 @@ This repository contains a small browser based car simulator. The page `map2.htm
 
 ## Running the simulation
 
-Run the Flask application which serves both the HTML interface and the API endpoints:
+Run the Flask application which serves both the HTML interface and the API
+endpoints:
 
 ```bash
 python server.py
 ```
 
-Then open `http://127.0.0.1:5000/` in your browser. The Flask server exposes the following services:
+Then open `http://127.0.0.1:5000/` in your browser. The server exposes the
+following services:
 - `http://127.0.0.1:5000/api/car` for telemetry data from the simulator.
 - `http://127.0.0.1:5000/api/control` for remote control commands.
-   Then navigate to `http://localhost:8000/map2.html`.
-
-2. Start the Flask backend which provides the required API endpoints:
-
-   ```bash
-   python server.py
-   ```
-
-    This exposes the following services:
-    - `http://127.0.0.1:5001/api/car` for telemetry data from the simulator.
-    - `http://localhost:5002/api/control` for remote control commands.
-
-Without these servers the related features of the HTML page will not work.
+The map editor is available at `http://127.0.0.1:5000/map2`.
 
 ## Saving and loading maps
 
