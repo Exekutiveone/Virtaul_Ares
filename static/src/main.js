@@ -173,7 +173,18 @@ async function runSequence(file, format) {
   if (!file) return;
   const res = await fetch('/static/sequences/' + encodeURIComponent(file));
   if (!res.ok) return;
-  const text = await res.text();
+
+  let steps = [];
+  if (format === 'json' || file.endsWith('.json')) {
+    steps = await res.json();
+  } else {
+    const text = await res.text();
+    steps = parseTextSequence(text, format);
+  }
+  await executeSteps(steps);
+}
+
+function parseTextSequence(text, format) {
   const steps = [];
   const lines = text.trim().split(/\r?\n/);
   for (const line of lines) {
@@ -203,23 +214,46 @@ async function runSequence(file, format) {
       }
     }
   }
+  return steps;
+}
+
+async function executeSteps(steps) {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (const step of steps) {
-    let curr = step;
-    if (step.condition) {
-      const val = getSensorValue(step.condition.sensor);
-      const target = evaluateCondition(val, step.condition.op, step.condition.value)
-        ? step.then
-        : step.else;
-      curr = target;
-    }
-    const reps = curr.repeat || 1;
-    for (let i = 0; i < reps; i++) {
-      await sendAction(car, curr.action);
-      await sleep(curr.duration * 1000);
-      await sendAction(car, 'stop');
+    if (step.action) {
+      const reps = step.repeat || 1;
+      for (let i = 0; i < reps; i++) {
+        await sendAction(car, step.action);
+        await sleep(step.duration * 1000);
+        await sendAction(car, 'stop');
+      }
+    } else if (step.condition || step.if) {
+      const cond = step.condition || step.if;
+      const thenSteps = step.then || cond.then;
+      const elseSteps = step.else || cond.else;
+      const val = getSensorValue(cond.sensor);
+      const target = evaluateCondition(val, cond.op, cond.value)
+        ? thenSteps
+        : elseSteps;
+      await executeSteps(Array.isArray(target) ? target : [target]);
+    } else if (step.loop) {
+      for (let i = 0; i < step.loop.repeat; i++) {
+        await executeSteps(step.loop.steps);
+      }
+    } else if (step.while) {
+      while (evaluateCondition(getSensorValue(step.while.sensor), step.while.op, step.while.value)) {
+        await executeSteps(step.while.steps);
+      }
+    } else if (step.call) {
+      await runSequence(step.call, getFormatFromFile(step.call));
     }
   }
+}
+
+function getFormatFromFile(file) {
+  if (file.endsWith('.ros')) return 'ros';
+  if (file.endsWith('.json')) return 'json';
+  return 'csv';
 }
 
 function sendTelemetry(front, rear, left, right) {
