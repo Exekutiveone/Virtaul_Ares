@@ -1,5 +1,6 @@
 const tblBody = document.querySelector('#stepsTbl tbody');
 const addBtn = document.getElementById('addStep');
+const addCondBtn = document.getElementById('addCond');
 const saveBtn = document.getElementById('saveSeq');
 
 function createSelect(action) {
@@ -57,7 +58,67 @@ function addRow(action = 'forward', value = 1) {
   updateInput(tr);
 }
 
+function addCondRow() {
+  const tr = document.createElement('tr');
+  tr.className = 'condRow';
+  const td1 = document.createElement('td');
+  const td2 = document.createElement('td');
+  const td3 = document.createElement('td');
+
+  const sensorSel = document.createElement('select');
+  sensorSel.className = 'sensor';
+  sensorSel.innerHTML = `
+    <option value="front">Front</option>
+    <option value="left">Links</option>
+    <option value="right">Rechts</option>
+    <option value="back">Hinten</option>`;
+  const opSel = document.createElement('select');
+  opSel.className = 'op';
+  opSel.innerHTML = `
+    <option value="<">&lt;</option>
+    <option value="<=">&lt;=</option>
+    <option value=">">&gt;</option>
+    <option value=">=">&gt;=</option>`;
+  const valInput = document.createElement('input');
+  valInput.type = 'number';
+  valInput.className = 'condVal';
+  valInput.step = '0.1';
+  valInput.value = 30;
+  td1.append('Wenn ', sensorSel, opSel, valInput, ' cm');
+
+  const thenAct = createSelect('stop');
+  thenAct.classList.add('thenAct');
+  const thenDur = document.createElement('input');
+  thenDur.type = 'number';
+  thenDur.className = 'thenDur';
+  thenDur.step = '0.1';
+  thenDur.value = 0;
+
+  const elseAct = createSelect('forward');
+  elseAct.classList.add('elseAct');
+  const elseDur = document.createElement('input');
+  elseDur.type = 'number';
+  elseDur.className = 'elseDur';
+  elseDur.step = '0.1';
+  elseDur.value = 1;
+
+  td2.append('dann ', thenAct, thenDur, ' sonst ', elseAct, elseDur);
+
+  const del = document.createElement('button');
+  del.textContent = 'x';
+  del.className = 'del';
+  td3.appendChild(del);
+
+  tr.appendChild(td1);
+  tr.appendChild(td2);
+  tr.appendChild(td3);
+  tblBody.appendChild(tr);
+
+  del.addEventListener('click', () => tr.remove());
+}
+
 addBtn.addEventListener('click', () => addRow());
+addCondBtn.addEventListener('click', () => addCondRow());
 addRow();
 
 saveBtn.addEventListener('click', async () => {
@@ -66,11 +127,23 @@ saveBtn.addEventListener('click', async () => {
   if (!name) { alert('Name fehlt'); return; }
   const steps = [];
   tblBody.querySelectorAll('tr').forEach(tr => {
-    const action = tr.querySelector('.action').value;
-    const inp = tr.querySelector('.val');
-    let val = 0;
-    if (!inp.disabled) val = parseFloat(inp.value);
-    if (action && !isNaN(val)) steps.push({action,duration:val});
+    if (tr.classList.contains('condRow')) {
+      const sensor = tr.querySelector('.sensor').value;
+      const op = tr.querySelector('.op').value;
+      const val = parseFloat(tr.querySelector('.condVal').value);
+      const a1 = tr.querySelector('.thenAct').value;
+      const d1 = parseFloat(tr.querySelector('.thenDur').value);
+      const a2 = tr.querySelector('.elseAct').value;
+      const d2 = parseFloat(tr.querySelector('.elseDur').value);
+      const line = `if ${sensor} ${op} ${val} then ${a1} ${d1} else ${a2} ${d2}`;
+      steps.push({ line });
+    } else {
+      const action = tr.querySelector('.action').value;
+      const inp = tr.querySelector('.val');
+      let val = 0;
+      if (!inp.disabled) val = parseFloat(inp.value);
+      if (action && !isNaN(val)) steps.push({ action, duration: val });
+    }
   });
   if (!steps.length) { alert('Keine Schritte'); return; }
   const res = await fetch('/api/sequences', {
