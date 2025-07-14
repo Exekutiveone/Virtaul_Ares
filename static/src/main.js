@@ -51,6 +51,8 @@ const blueBackEl = document.getElementById('blueBack');
 const speedEl = document.getElementById('speed');
 const rpmEl = document.getElementById('rpm');
 const gyroEl = document.getElementById('gyro');
+const slamCoverageEl = document.getElementById('slamCoverage');
+let coverageInterval = null;
 const cellCmInput = document.getElementById('gridCellCm');
 const widthCmInput = document.getElementById('gridWidth');
 const heightCmInput = document.getElementById('gridHeight');
@@ -77,10 +79,15 @@ if (slamCheckbox) {
       slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
       prevCarRect = null;
       revealCar();
+      if (coverageInterval) clearInterval(coverageInterval);
+      coverageInterval = setInterval(updateSlamCoverage, 1000);
+      updateSlamCoverage();
     } else {
       slamCanvas.style.display = 'none';
       slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
       prevCarRect = null;
+      if (coverageInterval) clearInterval(coverageInterval);
+      if (slamCoverageEl) slamCoverageEl.textContent = '0%';
     }
   });
 }
@@ -409,6 +416,7 @@ function resizeCanvas() {
     slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
     prevCarRect = null;
     revealCar();
+    updateSlamCoverage();
   }
   updateTransform();
 }
@@ -522,6 +530,18 @@ function revealCar() {
   slamCtx.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
   slamCtx.restore();
   prevCarRect = bbox;
+}
+
+function updateSlamCoverage() {
+  if (!slamMode || !slamCoverageEl) return;
+  const data = slamCtx.getImageData(0, 0, slamCanvas.width, slamCanvas.height).data;
+  let cleared = 0;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] === 0) cleared++;
+  }
+  const total = slamCanvas.width * slamCanvas.height;
+  const percent = (cleared / total) * 100;
+  slamCoverageEl.textContent = percent.toFixed(1) + '%';
 }
 
 function updatePreview() {
