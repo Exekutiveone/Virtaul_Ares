@@ -55,9 +55,11 @@ export class Car {
     };
 
     window.addEventListener('keydown', (e) => {
+      if (e.key in this.keys) e.preventDefault();
       if (!this.autopilot && e.key in this.keys) this.keys[e.key] = true;
     });
     window.addEventListener('keyup', (e) => {
+      if (e.key in this.keys) e.preventDefault();
       if (!this.autopilot && e.key in this.keys) this.keys[e.key] = false;
     });
 
