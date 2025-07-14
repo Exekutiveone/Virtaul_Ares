@@ -12,6 +12,9 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 maps = {}
 control_action = None
 telemetry_log = []
+latest_telemetry = None
+current_map = None
+current_grid = None
 
 
 @app.route('/')
@@ -26,6 +29,11 @@ def map_list():
 @app.route('/map2')
 def map2_page():
     return render_template('map2.html')
+
+
+@app.route('/status')
+def status_page():
+    return render_template('status.html')
 
 
 # CSV map storage
@@ -58,6 +66,24 @@ def save_seq_list(data):
     os.makedirs(SEQUENCE_FOLDER, exist_ok=True)
     with open(SEQUENCE_LIST_FILE, 'w') as f:
         json.dump(data, f)
+
+
+def map_to_grid(map_data):
+    cols = map_data.get('cols')
+    rows = map_data.get('rows')
+    cell = map_data.get('cellSize', 1)
+    grid = [[1 for _ in range(cols)] for _ in range(rows)]
+    for o in map_data.get('obstacles', []):
+        start_x = int(o.get('x', 0) / cell)
+        start_y = int(o.get('y', 0) / cell)
+        size = max(1, int(o.get('size', cell) / cell))
+        for dx in range(size):
+            for dy in range(size):
+                x = start_x + dx
+                y = start_y + dy
+                if 0 <= x < cols and 0 <= y < rows:
+                    grid[y][x] = 2
+    return grid
 
 
 @app.route('/api/csv-maps', methods=['GET', 'POST'])
@@ -229,6 +255,10 @@ def maps_route():
         map_data = data.get('map')
         map_id = str(uuid4())
         maps[map_id] = {'id': map_id, 'name': name, 'map': map_data}
+        global current_map, current_grid
+        current_map = map_data
+        if map_data:
+            current_grid = map_to_grid(map_data)
         return jsonify({'id': map_id, 'name': name}), 201
     else:
         result = [{'id': m['id'], 'name': m['name']} for m in maps.values()]
@@ -241,8 +271,14 @@ def map_detail(map_id):
     if request.method == 'GET':
         return jsonify(maps[map_id]['map'])
     elif request.method == 'PUT':
-        name = request.get_json(force=True).get('name', maps[map_id]['name'])
+        data = request.get_json(force=True)
+        name = data.get('name', maps[map_id]['name'])
         maps[map_id]['name'] = name
+        global current_map, current_grid
+        if 'map' in data:
+            maps[map_id]['map'] = data['map']
+            current_map = data['map']
+            current_grid = map_to_grid(current_map)
         return jsonify({'id': map_id, 'name': name})
     else:  # DELETE
         del maps[map_id]
@@ -259,11 +295,23 @@ def control():
         control_action = None
         return jsonify({'action': action})
 
-@app.route('/api/car', methods=['POST'])
+@app.route('/api/car', methods=['GET', 'POST'])
 def car():
-    data = request.get_json(force=True)
-    telemetry_log.append(data)
-    return '', 204
+    global latest_telemetry
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        telemetry_log.append(data)
+        latest_telemetry = data
+        return '', 204
+    else:
+        return jsonify(latest_telemetry or {})
+
+
+@app.route('/api/grid')
+def grid():
+    if current_grid is None:
+        return jsonify({'error': 'no map'}), 404
+    return jsonify(current_grid)
 
 if __name__ == '__main__':
     app.run(debug=True)
