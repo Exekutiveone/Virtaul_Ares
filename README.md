@@ -56,3 +56,8 @@ if front < 50 then backward 1 else forward 1
 The available sensor names are `front` (red LiDAR), `left`, `right` and `back`
 (blue sonar). When running the sequence the condition is evaluated and the
 corresponding branch is executed.
+
+You can create such conditional sequences directly in the dashboard under
+`/sequence`. Besides the normal **Schritt hinzufügen** button there is now a
+**Bedingung hinzufügen** option which lets you pick a sensor, comparison and the
+actions for the *then* and *else* branches.

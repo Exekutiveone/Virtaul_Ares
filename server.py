@@ -107,11 +107,18 @@ def sequences_api():
         if fmt == 'ros':
             if not filename.endswith('.ros'):
                 filename += '.ros'
-            lines = [f"{s['action']} {s['duration']}" for s in steps]
         else:
             if not filename.endswith('.csv'):
                 filename += '.csv'
-            lines = [f"{s['action']},{s['duration']}" for s in steps]
+        lines = []
+        for s in steps:
+            if 'line' in s:
+                lines.append(s['line'])
+            else:
+                if fmt == 'ros':
+                    lines.append(f"{s['action']} {s['duration']}")
+                else:
+                    lines.append(f"{s['action']},{s['duration']}")
         os.makedirs(SEQUENCE_FOLDER, exist_ok=True)
         with open(os.path.join(SEQUENCE_FOLDER, filename), 'w') as f:
             f.write("\n".join(lines))
