@@ -588,8 +588,10 @@ function revealCone(x, y, length, angle, baseWidth) {
 function revealCar() {
   const bbox = car.getBoundingBox(car.posX, car.posY);
   if (prevCarRect) {
-    slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+   slamCtx.save();
+    slamCtx.globalCompositeOperation = 'destination-out';
     slamCtx.fillRect(prevCarRect.x, prevCarRect.y, prevCarRect.w, prevCarRect.h);
+    slamCtx.restore();
   }
   slamCtx.save();
   slamCtx.globalCompositeOperation = 'destination-out';

@@ -8,83 +8,24 @@ from datetime import datetime
 import requests
 
 ACTIONS = ["forward", "left", "right", "backward", "stop"]
-# Added map coverage as part of the state
 STATE_SIZE = 7
 ACTION_SIZE = len(ACTIONS)
 
-
-class DummyEnv:
-    def __init__(self):
-        self.night_mode = False
-        self.reset()
-
-    def reset(self):
-        self.position = 0
-        self.goal = 10
-        self.done = False
-        self.speed = 1
-        self.rpm = 100
-        self.gyro = 0
-        self.night_mode = False
-
-    def get_state(self):
-        dist_front = max(self.goal - self.position, 0)
-        dist_left = 1
-        dist_right = 1
-        coverage = self.position / self.goal if self.goal else 0.0
-        # State now includes map coverage
-        return [
-            dist_front,
-            dist_left,
-            dist_right,
-            self.speed,
-            self.gyro,
-            self.rpm,
-            coverage,
-        ]
-
-    def send_action(self, action_index):
-        action = ACTIONS[action_index]
-        if action == "forward":
-            self.position += 1
-        elif action == "backward":
-            self.position = max(0, self.position - 1)
-        elif action == "stop":
-            pass
-        elif action == "left":
-            self.gyro -= 10
-        elif action == "right":
-            self.gyro += 10
-
-        if self.position >= self.goal:
-            self.done = True
-
-    def compute_reward(self, state, next_state):
-        coverage_gain = next_state[6] - state[6]
-        if self.done:
-            reward = 10
-        elif next_state[0] < 1:
-            reward = -5
-        else:
-            reward = state[0] - next_state[0]
-        reward += coverage_gain * 5
-        if next_state[6] >= 0.5 and not self.night_mode:
-            self.night_mode = True
-            print("Night mode activated (DummyEnv)")
-        return reward
-
-
 class ServerEnv:
-    """Environment that communicates with the Flask server."""
-
     def __init__(self, base_url="http://127.0.0.1:5000"):
         self.base_url = base_url.rstrip("/")
         self.done = False
         self.night_mode = False
+        self.map_switched = False
+        self.stalled = False
+        self.last_move_time = time.time()
 
     def reset(self):
         self.done = False
         self.night_mode = False
+        self.map_switched = False
+        self.stalled = False
+        self.last_move_time = time.time()
         return self.get_state()
 
     def get_state(self):
@@ -100,8 +41,22 @@ class ServerEnv:
         speed = data.get("speed", 0)
         gyro = data.get("gyro", 0)
         rpm = data.get("rpm", 0)
-
-        # Retrieve SLAM map to compute coverage
+        # Stall detection
+        if speed > 0:
+            self.last_move_time = time.time()
+        elif time.time() - self.last_move_time > 10:
+            try:
+                requests.post(
+                    f"{self.base_url}/api/control",
+                    json={"action": "restart"},
+                    timeout=5,
+                )
+            except Exception:
+                pass
+            self.stalled = True
+            speed = 0
+            coverage = 0.0
+            return [dist_front, dist_left, dist_right, speed, gyro, rpm, coverage]
         try:
             slam_res = requests.get(f"{self.base_url}/api/slam-map", timeout=5)
             slam = slam_res.json()
@@ -111,7 +66,6 @@ class ServerEnv:
             coverage = known / total if total else 0.0
         except Exception:
             coverage = 0.0
-
         return [
             dist_front,
             dist_left,
@@ -124,6 +78,7 @@ class ServerEnv:
 
     def send_action(self, action_index):
         action = ACTIONS[action_index]
+        self.map_switched = False
         try:
             requests.post(
                 f"{self.base_url}/api/control",
@@ -132,19 +87,25 @@ class ServerEnv:
             )
         except Exception:
             pass
+        self.done = False
 
     def compute_reward(self, state, next_state):
+        if self.stalled:
+            self.stalled = False
+            return -10
         coverage_gain = next_state[6] - state[6]
         if next_state[0] < 20:
             reward = -5
         else:
             reward = state[0] - next_state[0]
         reward += coverage_gain * 5
+        if self.map_switched:
+            reward += 20
+            self.map_switched = False
         if next_state[6] >= 0.5 and not self.night_mode:
             self.night_mode = True
             print("Night mode activated (ServerEnv)")
         return reward
-
 
 class DQNAgent:
     def __init__(self):
@@ -165,10 +126,11 @@ class DQNAgent:
         return model
 
     def act(self, state):
+        allowed_actions = list(range(ACTION_SIZE))
         if np.random.rand() <= self.epsilon:
-            return random.randrange(ACTION_SIZE)
-        q_values = self.model.predict(np.array([state]), verbose=0)
-        return np.argmax(q_values[0])
+            return random.choice(allowed_actions)
+        q_values = self.model.predict(np.array([state]), verbose=0)[0]
+        return int(np.argmax(q_values))
 
     def remember(self, s, a, r, s_, done):
         self.memory.append((s, a, r, s_, done))
@@ -185,30 +147,17 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-
-# Logging vorbereiten
 logfile = open("rl_log.csv", mode="w", newline='')
 logger = csv.writer(logfile)
 logger.writerow(["episode", "step", "timestamp", "action", "state", "reward", "done", "epsilon"])
 
-# Hauptloop
-import sys
-
-env = DummyEnv()
-if "--server" in sys.argv:
-    idx = sys.argv.index("--server")
-    base = "http://127.0.0.1:5000"
-    if idx + 1 < len(sys.argv):
-        base = sys.argv[idx + 1]
-    env = ServerEnv(base)
-
+env = ServerEnv("http://127.0.0.1:5000")
 agent = DQNAgent()
 
 for episode in range(1000):
     env.reset()
     state = env.get_state()
     total_reward = 0
-
     for step in range(100):
         action = agent.act(state)
         env.send_action(action)
@@ -216,7 +165,6 @@ for episode in range(1000):
         reward = env.compute_reward(state, next_state)
         done = env.done
         agent.remember(state, action, reward, next_state, done)
-        # Logging
         logger.writerow([
             episode,
             step,
@@ -231,7 +179,6 @@ for episode in range(1000):
         total_reward += reward
         if done:
             break
-
     print(f"Episode {episode} Reward: {total_reward}")
     agent.replay()
 
