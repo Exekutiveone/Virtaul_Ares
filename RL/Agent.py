@@ -8,12 +8,14 @@ from datetime import datetime
 import requests
 
 ACTIONS = ["forward", "left", "right", "backward", "stop"]
-STATE_SIZE = 6
+# Added map coverage as part of the state
+STATE_SIZE = 7
 ACTION_SIZE = len(ACTIONS)
 
 
 class DummyEnv:
     def __init__(self):
+        self.night_mode = False
         self.reset()
 
     def reset(self):
@@ -23,12 +25,23 @@ class DummyEnv:
         self.speed = 1
         self.rpm = 100
         self.gyro = 0
+        self.night_mode = False
 
     def get_state(self):
         dist_front = max(self.goal - self.position, 0)
         dist_left = 1
         dist_right = 1
-        return [dist_front, dist_left, dist_right, self.speed, self.gyro, self.rpm]
+        coverage = self.position / self.goal if self.goal else 0.0
+        # State now includes map coverage
+        return [
+            dist_front,
+            dist_left,
+            dist_right,
+            self.speed,
+            self.gyro,
+            self.rpm,
+            coverage,
+        ]
 
     def send_action(self, action_index):
         action = ACTIONS[action_index]
@@ -47,12 +60,18 @@ class DummyEnv:
             self.done = True
 
     def compute_reward(self, state, next_state):
+        coverage_gain = next_state[6] - state[6]
         if self.done:
-            return 10
+            reward = 10
         elif next_state[0] < 1:
-            return -5
+            reward = -5
         else:
-            return state[0] - next_state[0]
+            reward = state[0] - next_state[0]
+        reward += coverage_gain * 5
+        if next_state[6] >= 0.5 and not self.night_mode:
+            self.night_mode = True
+            print("Night mode activated (DummyEnv)")
+        return reward
 
 
 class ServerEnv:
@@ -61,9 +80,11 @@ class ServerEnv:
     def __init__(self, base_url="http://127.0.0.1:5000"):
         self.base_url = base_url.rstrip("/")
         self.done = False
+        self.night_mode = False
 
     def reset(self):
         self.done = False
+        self.night_mode = False
         return self.get_state()
 
     def get_state(self):
@@ -79,7 +100,27 @@ class ServerEnv:
         speed = data.get("speed", 0)
         gyro = data.get("gyro", 0)
         rpm = data.get("rpm", 0)
-        return [dist_front, dist_left, dist_right, speed, gyro, rpm]
+
+        # Retrieve SLAM map to compute coverage
+        try:
+            slam_res = requests.get(f"{self.base_url}/api/slam-map", timeout=5)
+            slam = slam_res.json()
+            cells = slam.get("cells", [])
+            total = sum(len(row) for row in cells)
+            known = sum(1 for row in cells for val in row if val != 0)
+            coverage = known / total if total else 0.0
+        except Exception:
+            coverage = 0.0
+
+        return [
+            dist_front,
+            dist_left,
+            dist_right,
+            speed,
+            gyro,
+            rpm,
+            coverage,
+        ]
 
     def send_action(self, action_index):
         action = ACTIONS[action_index]
@@ -93,9 +134,16 @@ class ServerEnv:
             pass
 
     def compute_reward(self, state, next_state):
+        coverage_gain = next_state[6] - state[6]
         if next_state[0] < 20:
-            return -5
-        return state[0] - next_state[0]
+            reward = -5
+        else:
+            reward = state[0] - next_state[0]
+        reward += coverage_gain * 5
+        if next_state[6] >= 0.5 and not self.night_mode:
+            self.night_mode = True
+            print("Night mode activated (ServerEnv)")
+        return reward
 
 
 class DQNAgent:
