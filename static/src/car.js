@@ -98,7 +98,6 @@ export class Car {
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
   }
 
-  setKeysFromAction(action) {
   setKeysFromAction(action, value = null) {
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
     if (action === 'left') {
