@@ -349,6 +349,14 @@ canvas.addEventListener('wheel', (e) => {
 
 function updateMouseFollow() {
   if (!mouseTarget) return;
+  if (car.pointInHitbox(mouseTarget.x, mouseTarget.y)) {
+    for (const k of Object.keys(car.keys)) car.keys[k] = false;
+    car.velocity = 0;
+    car.angularVelocity = 0;
+    car.acceleration = 0;
+    car.angularAcceleration = 0;
+    return;
+  }
   const cx = car.posX + car.imgWidth / 2;
   const cy = car.posY + car.imgHeight / 2;
   const angle = Math.atan2(mouseTarget.y - cy, mouseTarget.x - cx);
