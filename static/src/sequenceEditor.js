@@ -1,6 +1,7 @@
 const tblBody = document.querySelector('#stepsTbl tbody');
 const addBtn = document.getElementById('addStep');
 const addCondBtn = document.getElementById('addCond');
+const addLoopBtn = document.getElementById('addLoop');
 const saveBtn = document.getElementById('saveSeq');
 
 function createSelect(action) {
@@ -117,8 +118,44 @@ function addCondRow() {
   del.addEventListener('click', () => tr.remove());
 }
 
+function addLoopRow() {
+  const tr = document.createElement('tr');
+  tr.className = 'loopRow';
+  const td1 = document.createElement('td');
+  const td2 = document.createElement('td');
+  const td3 = document.createElement('td');
+
+  const countInput = document.createElement('input');
+  countInput.type = 'number';
+  countInput.min = '1';
+  countInput.className = 'loopCount';
+  countInput.value = 2;
+  td1.append('for ', countInput, 'x');
+
+  const select = createSelect('forward');
+  const dur = document.createElement('input');
+  dur.type = 'number';
+  dur.className = 'val';
+  dur.step = '0.1';
+  dur.value = 1;
+  td2.append(select, dur);
+
+  const del = document.createElement('button');
+  del.textContent = 'x';
+  del.className = 'del';
+  td3.appendChild(del);
+
+  tr.appendChild(td1);
+  tr.appendChild(td2);
+  tr.appendChild(td3);
+  tblBody.appendChild(tr);
+
+  del.addEventListener('click', () => tr.remove());
+}
+
 addBtn.addEventListener('click', () => addRow());
 addCondBtn.addEventListener('click', () => addCondRow());
+if (addLoopBtn) addLoopBtn.addEventListener('click', () => addLoopRow());
 addRow();
 
 saveBtn.addEventListener('click', async () => {
@@ -137,6 +174,12 @@ saveBtn.addEventListener('click', async () => {
       const d2 = parseFloat(tr.querySelector('.elseDur').value);
       const line = `if ${sensor} ${op} ${val} then ${a1} ${d1} else ${a2} ${d2}`;
       steps.push({ line });
+    } else if (tr.classList.contains('loopRow')) {
+      const count = parseInt(tr.querySelector('.loopCount').value);
+      const action = tr.querySelector('.action').value;
+      const val = parseFloat(tr.querySelector('.val').value);
+      if (action && !isNaN(val) && count > 0)
+        steps.push({ action, duration: val, repeat: count });
     } else {
       const action = tr.querySelector('.action').value;
       const inp = tr.querySelector('.val');
