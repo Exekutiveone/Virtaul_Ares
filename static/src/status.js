@@ -26,6 +26,13 @@ function drawGrid() {
     ctx.beginPath();
     ctx.arc(lastPos.x, lastPos.y, 4, 0, 2 * Math.PI);
     ctx.fill();
+    // Display the coordinates in the top right corner
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    const coordText = `(${Math.round(lastPos.x)}, ${Math.round(lastPos.y)})`;
+    ctx.fillText(coordText, canvas.width - 4, 4);
   }
 }
 
