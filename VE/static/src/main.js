@@ -14,145 +14,42 @@ import {
 } from './api/maps.js';
 import { loadSequences, runSequence, getFormatFromFile } from './sequences/runner.js';
 
-// ========================= Konstanten / UI Bindings =========================
-const CM_PER_PX = 2;
-const WAYPOINT_SIZE = 20 / CM_PER_PX;
-const TARGET_SIZE = 20;
 
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const typeSelect = document.getElementById('drawType');
-const sizeInput = document.getElementById('squareSize');
-const removeCheckbox = document.getElementById('removeMode');
-const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
-const findCarBtn = document.getElementById('findCarBtn');
-const canvasContainer = document.getElementById('canvasContainer');
-const slamCheckbox = document.getElementById('slamMode');
-const slamCanvas = document.getElementById('slamCanvas');
-const slamCtx = slamCanvas.getContext('2d');
 
-let slamMode = false;
-let prevCarRect = null;
-const slamHits = []; // für SLAM Marker
-const saveMapCsvBtn = document.getElementById('saveMapCsv');
-const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
-const connectCornersBtn = document.getElementById('connectCorners');
-const loadMapCsvInput = document.getElementById('loadMapCsv');
-const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
-const sequenceSelect = document.getElementById('sequenceSelect');
-const runSequenceBtn = document.getElementById('runSequenceBtn');
-const controlModeSelect = document.getElementById('controlMode');
-const restartBtn = document.getElementById('restartBtn');
-const nextMapBtn = document.getElementById('nextMapBtn');
+// =========================     =========================
+// ========================= Car =========================
+// =========================     =========================
 
-// ========================= Steuerung & UI States =========================
-let controlMode = controlModeSelect ? controlModeSelect.value : 'wasd';
-let mouseTarget = null;
-const keyMap = {
-  w: 'ArrowUp',
-  a: 'ArrowLeft',
-  s: 'ArrowDown',
-  d: 'ArrowRight',
-};
 
-const redEl = document.getElementById('redLength');
-const greenEl = document.getElementById('greenLength');
-const blueLeft1El = document.getElementById('blueLeft1');
-const blueLeft2El = document.getElementById('blueLeft2');
-const blueRight1El = document.getElementById('blueRight1');
-const blueRight2El = document.getElementById('blueRight2');
-const blueBackEl = document.getElementById('blueBack');
-const speedEl = document.getElementById('speed');
-const speedSlider = document.getElementById('speedSlider');
-const speedSliderVal = document.getElementById('speedSliderVal');
-const rpmEl = document.getElementById('rpm');
-const gyroEl = document.getElementById('gyro');
-const posXEl = document.getElementById('posX');
-const posYEl = document.getElementById('posY');
-const slamCoverageEl = document.getElementById('slamCoverage');
-const scoreEl = document.getElementById('score');
-let score = 0;
-let coverageScore = 0;
-let coverageInterval = null;
-let lastCrash = false;
-
-// ========================= Scoreboard Logic =========================
-function updateScoreBoard() {
-  if (scoreEl) scoreEl.textContent = score;
-}
-
-// ========================= Map Handling / Initialisierung =========================
-let mapList = [];
-let currentMapIndex = -1;
-const cellCmInput = document.getElementById('gridCellCm');
-const widthCmInput = document.getElementById('gridWidth');
-const heightCmInput = document.getElementById('gridHeight');
-const params = new URLSearchParams(window.location.search);
-const csvMapUrl = params.get('map');
-const editorMode = params.has('editor');
-
-async function initMapList() {
-  try {
-    mapList = await fetchCsvMapList();
-    if (csvMapUrl) {
-      const file = csvMapUrl.startsWith('/static/maps/')
-        ? decodeURIComponent(csvMapUrl.substring('/static/maps/'.length))
-        : csvMapUrl;
-      currentMapIndex = mapList.findIndex((m) => m.file === file);
-    }
-    if (currentMapIndex === -1 && mapList.length) currentMapIndex = 0;
-  } catch (err) {
-    console.error('initMapList failed', err);
+// ========================= Mausbasierte Car-Steuerung =========================
+function updateMouseFollow() {
+  if (!mouseTarget) return;
+  if (car.pointInHitbox(mouseTarget.x, mouseTarget.y)) {
+    for (const k of Object.keys(car.keys)) car.keys[k] = false;
+    car.velocity = 0;
+    car.angularVelocity = 0;
+    car.acceleration = 0;
+    car.angularAcceleration = 0;
+    return;
   }
-}
-const mapListReady = initMapList();
-async function ensureMapList() {
-  if (!mapList.length) {
-    try {
-      await mapListReady;
-    } catch (err) {
-      console.error('ensureMapList failed', err);
-    }
+  const cx = car.posX + car.imgWidth / 2;
+  const cy = car.posY + car.imgHeight / 2;
+  const angle = Math.atan2(mouseTarget.y - cy, mouseTarget.x - cx);
+  let diff = angle - (car.rotation + Math.PI);
+  while (diff > Math.PI) diff -= 2 * Math.PI;
+  while (diff < -Math.PI) diff += 2 * Math.PI;
+  for (const k of Object.keys(car.keys)) car.keys[k] = false;
+  const dist = Math.hypot(mouseTarget.x - cx, mouseTarget.y - cy);
+  if (Math.abs(diff) > 0.1) {
+    car.keys[diff > 0 ? 'ArrowRight' : 'ArrowLeft'] = true;
+  } else if (dist > 10) {
+    car.keys.ArrowUp = true;
+  } else {
+    car.velocity = 0;
+    car.angularVelocity = 0;
+    car.acceleration = 0;
+    car.angularAcceleration = 0;
   }
-}
-
-// ========================= Control Mode Handling =========================
-if (controlModeSelect) {
-  controlModeSelect.addEventListener('change', () => {
-    controlMode = controlModeSelect.value;
-    car.autopilot = controlMode === 'mouse';
-  });
-}
-
-// ========================= SLAM Mode =========================
-if (slamCheckbox) {
-  slamCheckbox.addEventListener('change', () => {
-    slamMode = slamCheckbox.checked;
-    if (slamMode) {
-      slamCanvas.width = canvas.width;
-      slamCanvas.height = canvas.height;
-      slamCanvas.style.display = 'block';
-      slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
-      slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
-      prevCarRect = null;
-      slamHits.length = 0;
-      revealCar();
-      if (coverageInterval) clearInterval(coverageInterval);
-      coverageInterval = setInterval(updateSlamCoverage, 1000);
-      coverageScore = 0;
-      updateScoreBoard();
-      updateSlamCoverage();
-    } else {
-      slamCanvas.style.display = 'none';
-      slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
-      prevCarRect = null;
-      slamHits.length = 0;
-      if (coverageInterval) clearInterval(coverageInterval);
-      if (slamCoverageEl) slamCoverageEl.textContent = '0%';
-      coverageScore = 0;
-      updateScoreBoard();
-    }
-  });
 }
 
 // ========================= Tastatursteuerung =========================
@@ -172,6 +69,309 @@ window.addEventListener('keyup', (e) => {
     car.keys[k] = false;
   }
 });
+
+
+// ========================= Car Instanzierung =========================
+carImage.onload = () => {
+  resizeCanvas();
+  updateObstacleOptions();
+  loadSequences(sequenceSelect);
+  if (runSequenceBtn)
+    runSequenceBtn.addEventListener('click', () => {
+      const opt = sequenceSelect.options[sequenceSelect.selectedIndex];
+      if (opt) runSequence(car, opt.value, opt.dataset.format);
+    });
+  setInterval(() => pollControl(car), CONTROL_POLL_INTERVAL);
+  pollControl(car);
+  loop();
+};
+const car = createCar(ctx, obstacles, CM_PER_PX);
+car.autopilot = controlMode === 'mouse';
+refreshCarObjects();
+
+
+
+
+
+
+
+
+
+
+
+// =========================     =========================
+// ========================= Map =========================
+// =========================     =========================
+
+
+// ========================= Window Resize =========================
+window.addEventListener('resize', resizeCanvas);
+
+
+
+// ========================= Vorschau/Preview Update =========================
+function updatePreview() {
+  updateObstacleOptions();
+}
+typeSelect.addEventListener('change', updatePreview);
+sizeInput.addEventListener('change', updatePreview);
+
+// ========================= Canvas Event Handler (Editier- & Steuerungslogik) =========================
+canvas.addEventListener('mousedown', (e) => {
+  if (zoomMode) {
+    isPanning = true;
+    panStartX = e.clientX + translateX;
+    panStartY = e.clientY + translateY;
+    return;
+  }
+  if (!editorMode) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  dragX =
+    Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
+  dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
+  isDragging = true;
+  lastPaintX = dragX;
+  lastPaintY = dragY;
+  if (typeSelect.value === 'obstacle') paintCell(dragX, dragY);
+});
+canvas.addEventListener('mouseup', () => {
+  if (zoomMode) {
+    isPanning = false;
+    return;
+  }
+  if (!editorMode) return;
+  if (!isDragging) return;
+  const selected = typeSelect.value;
+
+  if (selected === 'target' && !removeCheckbox.checked) {
+    targetMarker = new Target(dragX, dragY, previewSize);
+    gameMap.target = targetMarker;
+    refreshCarObjects();
+  } else if (selected === 'waypoint') {
+    if (removeCheckbox.checked) {
+      const idx = waypoints.findIndex((w) => w.x === dragX && w.y === dragY);
+      if (idx !== -1) waypoints.splice(idx, 1);
+    } else if (!waypoints.some((w) => w.x === dragX && w.y === dragY)) {
+      waypoints.push(new Waypoint(dragX, dragY, WAYPOINT_SIZE));
+    }
+    gameMap.waypoints = waypoints;
+  } else if (selected === 'corner') {
+    if (removeCheckbox.checked) {
+      const idx = cornerPoints.findIndex((p) => p.x === dragX && p.y === dragY);
+      if (idx !== -1) {
+        cornerPoints.splice(idx, 1);
+        renumberCornerPoints();
+      }
+    } else {
+      if (!cornerPoints.some((p) => p.x === dragX && p.y === dragY)) {
+        cornerPoints.push({ x: dragX, y: dragY, id: cornerPoints.length + 1 });
+      }
+    }
+  }
+  isDragging = false;
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (zoomMode && isPanning) {
+    translateX = panStartX - e.clientX;
+    translateY = panStartY - e.clientY;
+    updateTransform();
+    return;
+  }
+  if (!editorMode) return;
+  if (!isDragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  dragX =
+    Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
+  dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
+  if (
+    typeSelect.value === 'obstacle' &&
+    (dragX !== lastPaintX || dragY !== lastPaintY)
+  ) {
+    paintCell(dragX, dragY);
+    lastPaintX = dragX;
+    lastPaintY = dragY;
+  }
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (controlMode !== 'mouse') return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  mouseTarget = {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY,
+  };
+});
+canvas.addEventListener('wheel', (e) => {
+  if (!zoomMode) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  zoomScale = Math.max(0.5, Math.min(5, zoomScale * factor));
+  updateTransform();
+});
+// ========================= SLAM Funktionen =========================
+function revealCone(x, y, length, angle, baseWidth) {
+  let hit = null;
+  slamCtx.save();
+  slamCtx.globalCompositeOperation = 'destination-out';
+  car.drawKegel(
+    x,
+    y,
+    length,
+    angle,
+    '#000',
+    baseWidth,
+    slamCtx,
+    (hx, hy) => (hit = { x: hx, y: hy }),
+  );
+  slamCtx.restore();
+  if (hit) slamHits.push(hit);
+  drawSlamHits();
+}
+function drawSlamHits() {
+  slamCtx.save();
+  slamCtx.fillStyle = 'red';
+  for (const p of slamHits) {
+    slamCtx.beginPath();
+    slamCtx.arc(p.x, p.y, 3, 0, 2 * Math.PI);
+    slamCtx.fill();
+  }
+  slamCtx.restore();
+}
+function revealCar() {
+  const bbox = car.getBoundingBox(car.posX, car.posY);
+  if (prevCarRect) {
+   slamCtx.save();
+    slamCtx.globalCompositeOperation = 'destination-out';
+    slamCtx.fillRect(prevCarRect.x, prevCarRect.y, prevCarRect.w, prevCarRect.h);
+    slamCtx.restore();
+  }
+  slamCtx.save();
+  slamCtx.globalCompositeOperation = 'destination-out';
+  slamCtx.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
+  slamCtx.restore();
+  prevCarRect = bbox;
+  drawSlamHits();
+}
+function updateSlamCoverage() {
+  if (!slamMode || !slamCoverageEl) return;
+  const data = slamCtx.getImageData(0, 0, slamCanvas.width, slamCanvas.height).data;
+  let cleared = 0;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] === 0) cleared++;
+  }
+  const total = slamCanvas.width * slamCanvas.height;
+  const percent = (cleared / total) * 100;
+  slamCoverageEl.textContent = percent.toFixed(1) + '%';
+  const pts = Math.floor(percent);
+  if (pts !== coverageScore) {
+    score += pts - coverageScore;
+    coverageScore = pts;
+    updateScoreBoard();
+  }
+}
+
+// ========================= Map/Obstacle/Canvas Grid UI Updates =========================
+function updateObstacleOptions() {
+  if (!typeSelect || !sizeInput) return;
+  const size = parseInt(sizeInput.value);
+  sizeInput.value = isNaN(size) ? 1 : Math.max(1, Math.min(25, size));
+  previewSize =
+    typeSelect.value === 'target'
+      ? CELL_SIZE
+      : typeSelect.value === 'waypoint'
+        ? WAYPOINT_SIZE
+        : parseInt(sizeInput.value) * CELL_SIZE;
+}
+function resizeCanvas() {
+  canvas.width = gameMap.cols * CELL_SIZE;
+  canvas.height = gameMap.rows * CELL_SIZE;
+  slamCanvas.width = canvas.width;
+  slamCanvas.height = canvas.height;
+  if (slamMode) {
+    slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+    slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+    prevCarRect = null;
+    slamHits.length = 0;
+    revealCar();
+    updateSlamCoverage();
+  }
+  updateTransform();
+}
+function updateTransform() {
+  canvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
+  slamCanvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
+}
+
+// ========================= Zeichnen/Bearbeiten: Zellen, Linien, Corners =========================
+function paintCell(x, y) {
+  if (removeCheckbox.checked) {
+    if (
+      targetMarker &&
+      x === targetMarker.x &&
+      y === targetMarker.y &&
+      previewSize === targetMarker.size
+    ) {
+      targetMarker = null;
+      gameMap.target = null;
+    }
+    const i = obstacles.findIndex((o) => o.x === x && o.y === y);
+    if (i !== -1) obstacles.splice(i, 1);
+  } else {
+    if (
+      !obstacles.some((o) => o.x === x && o.y === y && o.size === previewSize)
+    ) {
+      obstacles.push(new Obstacle(x, y, previewSize));
+    }
+  }
+  refreshCarObjects();
+}
+function addLine(a, b, size) {
+  // Bresenham Algorithmus für Linien auf der Karte
+  let x0 = a.x / CELL_SIZE;
+  let y0 = a.y / CELL_SIZE;
+  const x1 = b.x / CELL_SIZE;
+  const y1 = b.y / CELL_SIZE;
+
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+
+  while (true) {
+    const px = x0 * CELL_SIZE;
+    const py = y0 * CELL_SIZE;
+    if (!obstacles.some((o) => o.x === px && o.y === py && o.size === size)) {
+      obstacles.push(new Obstacle(px, py, size));
+    }
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x0 += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
+}
+function connectCorners() {
+  if (cornerPoints.length < 2) return;
+  const size = parseInt(sizeInput.value) * CELL_SIZE;
+  const sorted = cornerPoints.slice().sort((a, b) => a.id - b.id);
+  for (let i = 1; i < sorted.length; i++) {
+    addLine(sorted[i - 1], sorted[i], size);
+  }
+  cornerPoints = [];
+  refreshCarObjects();
+}
+
 
 // ========================= Zoom und Panning =========================
 let zoomMode = false;
@@ -303,320 +503,83 @@ function respawnTarget() {
   }
 }
 
-// ========================= Car Instanzierung =========================
-carImage.onload = () => {
-  resizeCanvas();
-  updateObstacleOptions();
-  loadSequences(sequenceSelect);
-  if (runSequenceBtn)
-    runSequenceBtn.addEventListener('click', () => {
-      const opt = sequenceSelect.options[sequenceSelect.selectedIndex];
-      if (opt) runSequence(car, opt.value, opt.dataset.format);
-    });
-  setInterval(() => pollControl(car), CONTROL_POLL_INTERVAL);
-  pollControl(car);
-  loop();
-};
-const car = createCar(ctx, obstacles, CM_PER_PX);
-car.autopilot = controlMode === 'mouse';
-refreshCarObjects();
 
-// ========================= Map/Obstacle/Canvas Grid UI Updates =========================
-function updateObstacleOptions() {
-  if (!typeSelect || !sizeInput) return;
-  const size = parseInt(sizeInput.value);
-  sizeInput.value = isNaN(size) ? 1 : Math.max(1, Math.min(25, size));
-  previewSize =
-    typeSelect.value === 'target'
-      ? CELL_SIZE
-      : typeSelect.value === 'waypoint'
-        ? WAYPOINT_SIZE
-        : parseInt(sizeInput.value) * CELL_SIZE;
+// ========================= Scoreboard Logic =========================
+function updateScoreBoard() {
+  if (scoreEl) scoreEl.textContent = score;
 }
-function resizeCanvas() {
-  canvas.width = gameMap.cols * CELL_SIZE;
-  canvas.height = gameMap.rows * CELL_SIZE;
-  slamCanvas.width = canvas.width;
-  slamCanvas.height = canvas.height;
-  if (slamMode) {
-    slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
-    slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
-    prevCarRect = null;
-    slamHits.length = 0;
-    revealCar();
-    updateSlamCoverage();
+// ========================= Map Handling / Initialisierung =========================
+let mapList = [];
+let currentMapIndex = -1;
+const cellCmInput = document.getElementById('gridCellCm');
+const widthCmInput = document.getElementById('gridWidth');
+const heightCmInput = document.getElementById('gridHeight');
+const params = new URLSearchParams(window.location.search);
+const csvMapUrl = params.get('map');
+const editorMode = params.has('editor');
+
+async function initMapList() {
+  try {
+    mapList = await fetchCsvMapList();
+    if (csvMapUrl) {
+      const file = csvMapUrl.startsWith('/static/maps/')
+        ? decodeURIComponent(csvMapUrl.substring('/static/maps/'.length))
+        : csvMapUrl;
+      currentMapIndex = mapList.findIndex((m) => m.file === file);
+    }
+    if (currentMapIndex === -1 && mapList.length) currentMapIndex = 0;
+  } catch (err) {
+    console.error('initMapList failed', err);
   }
-  updateTransform();
 }
-function updateTransform() {
-  canvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
-  slamCanvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
-}
-
-// ========================= Zeichnen/Bearbeiten: Zellen, Linien, Corners =========================
-function paintCell(x, y) {
-  if (removeCheckbox.checked) {
-    if (
-      targetMarker &&
-      x === targetMarker.x &&
-      y === targetMarker.y &&
-      previewSize === targetMarker.size
-    ) {
-      targetMarker = null;
-      gameMap.target = null;
-    }
-    const i = obstacles.findIndex((o) => o.x === x && o.y === y);
-    if (i !== -1) obstacles.splice(i, 1);
-  } else {
-    if (
-      !obstacles.some((o) => o.x === x && o.y === y && o.size === previewSize)
-    ) {
-      obstacles.push(new Obstacle(x, y, previewSize));
-    }
-  }
-  refreshCarObjects();
-}
-function addLine(a, b, size) {
-  // Bresenham Algorithmus für Linien auf der Karte
-  let x0 = a.x / CELL_SIZE;
-  let y0 = a.y / CELL_SIZE;
-  const x1 = b.x / CELL_SIZE;
-  const y1 = b.y / CELL_SIZE;
-
-  const dx = Math.abs(x1 - x0);
-  const dy = Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-  let err = dx - dy;
-
-  while (true) {
-    const px = x0 * CELL_SIZE;
-    const py = y0 * CELL_SIZE;
-    if (!obstacles.some((o) => o.x === px && o.y === py && o.size === size)) {
-      obstacles.push(new Obstacle(px, py, size));
-    }
-    if (x0 === x1 && y0 === y1) break;
-    const e2 = 2 * err;
-    if (e2 > -dy) {
-      err -= dy;
-      x0 += sx;
-    }
-    if (e2 < dx) {
-      err += dx;
-      y0 += sy;
+const mapListReady = initMapList();
+async function ensureMapList() {
+  if (!mapList.length) {
+    try {
+      await mapListReady;
+    } catch (err) {
+      console.error('ensureMapList failed', err);
     }
   }
 }
-function connectCorners() {
-  if (cornerPoints.length < 2) return;
-  const size = parseInt(sizeInput.value) * CELL_SIZE;
-  const sorted = cornerPoints.slice().sort((a, b) => a.id - b.id);
-  for (let i = 1; i < sorted.length; i++) {
-    addLine(sorted[i - 1], sorted[i], size);
-  }
-  cornerPoints = [];
-  refreshCarObjects();
+
+// ========================= Control Mode Handling =========================
+if (controlModeSelect) {
+  controlModeSelect.addEventListener('change', () => {
+    controlMode = controlModeSelect.value;
+    car.autopilot = controlMode === 'mouse';
+  });
 }
 
-// ========================= Window Resize =========================
-window.addEventListener('resize', resizeCanvas);
-
-// ========================= SLAM Funktionen =========================
-function revealCone(x, y, length, angle, baseWidth) {
-  let hit = null;
-  slamCtx.save();
-  slamCtx.globalCompositeOperation = 'destination-out';
-  car.drawKegel(
-    x,
-    y,
-    length,
-    angle,
-    '#000',
-    baseWidth,
-    slamCtx,
-    (hx, hy) => (hit = { x: hx, y: hy }),
-  );
-  slamCtx.restore();
-  if (hit) slamHits.push(hit);
-  drawSlamHits();
-}
-function drawSlamHits() {
-  slamCtx.save();
-  slamCtx.fillStyle = 'red';
-  for (const p of slamHits) {
-    slamCtx.beginPath();
-    slamCtx.arc(p.x, p.y, 3, 0, 2 * Math.PI);
-    slamCtx.fill();
-  }
-  slamCtx.restore();
-}
-function revealCar() {
-  const bbox = car.getBoundingBox(car.posX, car.posY);
-  if (prevCarRect) {
-   slamCtx.save();
-    slamCtx.globalCompositeOperation = 'destination-out';
-    slamCtx.fillRect(prevCarRect.x, prevCarRect.y, prevCarRect.w, prevCarRect.h);
-    slamCtx.restore();
-  }
-  slamCtx.save();
-  slamCtx.globalCompositeOperation = 'destination-out';
-  slamCtx.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
-  slamCtx.restore();
-  prevCarRect = bbox;
-  drawSlamHits();
-}
-function updateSlamCoverage() {
-  if (!slamMode || !slamCoverageEl) return;
-  const data = slamCtx.getImageData(0, 0, slamCanvas.width, slamCanvas.height).data;
-  let cleared = 0;
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] === 0) cleared++;
-  }
-  const total = slamCanvas.width * slamCanvas.height;
-  const percent = (cleared / total) * 100;
-  slamCoverageEl.textContent = percent.toFixed(1) + '%';
-  const pts = Math.floor(percent);
-  if (pts !== coverageScore) {
-    score += pts - coverageScore;
-    coverageScore = pts;
-    updateScoreBoard();
-  }
-}
-
-// ========================= Vorschau/Preview Update =========================
-function updatePreview() {
-  updateObstacleOptions();
-}
-typeSelect.addEventListener('change', updatePreview);
-sizeInput.addEventListener('change', updatePreview);
-
-// ========================= Canvas Event Handler (Editier- & Steuerungslogik) =========================
-canvas.addEventListener('mousedown', (e) => {
-  if (zoomMode) {
-    isPanning = true;
-    panStartX = e.clientX + translateX;
-    panStartY = e.clientY + translateY;
-    return;
-  }
-  if (!editorMode) return;
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  dragX =
-    Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
-  dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
-  isDragging = true;
-  lastPaintX = dragX;
-  lastPaintY = dragY;
-  if (typeSelect.value === 'obstacle') paintCell(dragX, dragY);
-});
-canvas.addEventListener('mouseup', () => {
-  if (zoomMode) {
-    isPanning = false;
-    return;
-  }
-  if (!editorMode) return;
-  if (!isDragging) return;
-  const selected = typeSelect.value;
-
-  if (selected === 'target' && !removeCheckbox.checked) {
-    targetMarker = new Target(dragX, dragY, previewSize);
-    gameMap.target = targetMarker;
-    refreshCarObjects();
-  } else if (selected === 'waypoint') {
-    if (removeCheckbox.checked) {
-      const idx = waypoints.findIndex((w) => w.x === dragX && w.y === dragY);
-      if (idx !== -1) waypoints.splice(idx, 1);
-    } else if (!waypoints.some((w) => w.x === dragX && w.y === dragY)) {
-      waypoints.push(new Waypoint(dragX, dragY, WAYPOINT_SIZE));
-    }
-    gameMap.waypoints = waypoints;
-  } else if (selected === 'corner') {
-    if (removeCheckbox.checked) {
-      const idx = cornerPoints.findIndex((p) => p.x === dragX && p.y === dragY);
-      if (idx !== -1) {
-        cornerPoints.splice(idx, 1);
-        renumberCornerPoints();
-      }
+// ========================= SLAM Mode =========================
+if (slamCheckbox) {
+  slamCheckbox.addEventListener('change', () => {
+    slamMode = slamCheckbox.checked;
+    if (slamMode) {
+      slamCanvas.width = canvas.width;
+      slamCanvas.height = canvas.height;
+      slamCanvas.style.display = 'block';
+      slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+      slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+      prevCarRect = null;
+      slamHits.length = 0;
+      revealCar();
+      if (coverageInterval) clearInterval(coverageInterval);
+      coverageInterval = setInterval(updateSlamCoverage, 1000);
+      coverageScore = 0;
+      updateScoreBoard();
+      updateSlamCoverage();
     } else {
-      if (!cornerPoints.some((p) => p.x === dragX && p.y === dragY)) {
-        cornerPoints.push({ x: dragX, y: dragY, id: cornerPoints.length + 1 });
-      }
+      slamCanvas.style.display = 'none';
+      slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
+      prevCarRect = null;
+      slamHits.length = 0;
+      if (coverageInterval) clearInterval(coverageInterval);
+      if (slamCoverageEl) slamCoverageEl.textContent = '0%';
+      coverageScore = 0;
+      updateScoreBoard();
     }
-  }
-  isDragging = false;
-});
-canvas.addEventListener('mousemove', (e) => {
-  if (zoomMode && isPanning) {
-    translateX = panStartX - e.clientX;
-    translateY = panStartY - e.clientY;
-    updateTransform();
-    return;
-  }
-  if (!editorMode) return;
-  if (!isDragging) return;
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  dragX =
-    Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE) * CELL_SIZE;
-  dragY = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE) * CELL_SIZE;
-  if (
-    typeSelect.value === 'obstacle' &&
-    (dragX !== lastPaintX || dragY !== lastPaintY)
-  ) {
-    paintCell(dragX, dragY);
-    lastPaintX = dragX;
-    lastPaintY = dragY;
-  }
-});
-canvas.addEventListener('mousemove', (e) => {
-  if (controlMode !== 'mouse') return;
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  mouseTarget = {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY,
-  };
-});
-canvas.addEventListener('wheel', (e) => {
-  if (!zoomMode) return;
-  e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.1 : 0.9;
-  zoomScale = Math.max(0.5, Math.min(5, zoomScale * factor));
-  updateTransform();
-});
-
-// ========================= Mausbasierte Car-Steuerung =========================
-function updateMouseFollow() {
-  if (!mouseTarget) return;
-  if (car.pointInHitbox(mouseTarget.x, mouseTarget.y)) {
-    for (const k of Object.keys(car.keys)) car.keys[k] = false;
-    car.velocity = 0;
-    car.angularVelocity = 0;
-    car.acceleration = 0;
-    car.angularAcceleration = 0;
-    return;
-  }
-  const cx = car.posX + car.imgWidth / 2;
-  const cy = car.posY + car.imgHeight / 2;
-  const angle = Math.atan2(mouseTarget.y - cy, mouseTarget.x - cx);
-  let diff = angle - (car.rotation + Math.PI);
-  while (diff > Math.PI) diff -= 2 * Math.PI;
-  while (diff < -Math.PI) diff += 2 * Math.PI;
-  for (const k of Object.keys(car.keys)) car.keys[k] = false;
-  const dist = Math.hypot(mouseTarget.x - cx, mouseTarget.y - cy);
-  if (Math.abs(diff) > 0.1) {
-    car.keys[diff > 0 ? 'ArrowRight' : 'ArrowLeft'] = true;
-  } else if (dist > 10) {
-    car.keys.ArrowUp = true;
-  } else {
-    car.velocity = 0;
-    car.angularVelocity = 0;
-    car.acceleration = 0;
-    car.angularAcceleration = 0;
-  }
+  });
 }
 
 // ========================= Grid Rendering =========================
@@ -791,6 +754,9 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+
+
+
 // ========================= Map-Handling (Datei, CSV, Index, Reset) =========================
 function loadMapFile(e) {
   const file = e.target.files[0];
@@ -950,6 +916,76 @@ if (editorMode) {
     pushMap(gameMap, 'map');
   });
 }
+
+
+
+
+// =========================     =========================
+// ========================= UI =========================
+// =========================     =========================
+
+// ========================= Konstanten / UI Bindings =========================
+const CM_PER_PX = 2;
+const WAYPOINT_SIZE = 20 / CM_PER_PX;
+const TARGET_SIZE = 20;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const typeSelect = document.getElementById('drawType');
+const sizeInput = document.getElementById('squareSize');
+const removeCheckbox = document.getElementById('removeMode');
+const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
+const findCarBtn = document.getElementById('findCarBtn');
+const canvasContainer = document.getElementById('canvasContainer');
+const slamCheckbox = document.getElementById('slamMode');
+const slamCanvas = document.getElementById('slamCanvas');
+const slamCtx = slamCanvas.getContext('2d');
+
+let slamMode = false;
+let prevCarRect = null;
+const slamHits = []; // für SLAM Marker
+const saveMapCsvBtn = document.getElementById('saveMapCsv');
+const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
+const connectCornersBtn = document.getElementById('connectCorners');
+const loadMapCsvInput = document.getElementById('loadMapCsv');
+const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
+const sequenceSelect = document.getElementById('sequenceSelect');
+const runSequenceBtn = document.getElementById('runSequenceBtn');
+const controlModeSelect = document.getElementById('controlMode');
+const restartBtn = document.getElementById('restartBtn');
+const nextMapBtn = document.getElementById('nextMapBtn');
+
+
+// ========================= Steuerung & UI States =========================
+let controlMode = controlModeSelect ? controlModeSelect.value : 'wasd';
+let mouseTarget = null;
+const keyMap = {
+  w: 'ArrowUp',
+  a: 'ArrowLeft',
+  s: 'ArrowDown',
+  d: 'ArrowRight',
+};
+
+const redEl = document.getElementById('redLength');
+const greenEl = document.getElementById('greenLength');
+const blueLeft1El = document.getElementById('blueLeft1');
+const blueLeft2El = document.getElementById('blueLeft2');
+const blueRight1El = document.getElementById('blueRight1');
+const blueRight2El = document.getElementById('blueRight2');
+const blueBackEl = document.getElementById('blueBack');
+const speedEl = document.getElementById('speed');
+const speedSlider = document.getElementById('speedSlider');
+const speedSliderVal = document.getElementById('speedSliderVal');
+const rpmEl = document.getElementById('rpm');
+const gyroEl = document.getElementById('gyro');
+const posXEl = document.getElementById('posX');
+const posYEl = document.getElementById('posY');
+const slamCoverageEl = document.getElementById('slamCoverage');
+const scoreEl = document.getElementById('score');
+let score = 0;
+let coverageScore = 0;
+let coverageInterval = null;
+let lastCrash = false;
 
 // ========================= UI Buttons & Sliders =========================
 toggleHitboxesBtn.addEventListener('click', () => {
