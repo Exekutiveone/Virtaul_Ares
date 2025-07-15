@@ -87,7 +87,8 @@ export class Car {
     // Steering state in radians
     this.steeringAngle = 0;
     this.maxSteering = (70 * Math.PI) / 180;
-    this.steerRate = 0.02;
+    // Reduced steering sensitivity
+    this.steerRate = 0.015;
     this.wheelBase = 50;
     this.angleOverride = false;
   }

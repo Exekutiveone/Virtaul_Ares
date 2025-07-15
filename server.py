@@ -5,6 +5,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
 import json
+import math
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
@@ -86,6 +87,42 @@ def map_to_grid(map_data):
                 if 0 <= x < cols and 0 <= y < rows:
                     grid[y][x] = 2
     return grid
+
+
+def grid_to_geo(map_data, origin_lat=50.0, origin_lon=8.0, cm_per_px=2):
+    """Convert a map description into geographic coordinates.
+
+    Parameters
+    ----------
+    map_data: dict
+        Map information containing cols, rows and cellSize.
+    origin_lat: float
+        Latitude of the grid origin (south-west corner).
+    origin_lon: float
+        Longitude of the grid origin (south-west corner).
+    cm_per_px: float
+        Real world centimeters represented by one pixel.
+
+    Returns
+    -------
+    dict
+        Structure with origin and a matrix of latitude/longitude pairs.
+    """
+    cols = map_data.get('cols', 0)
+    rows = map_data.get('rows', 0)
+    cell_px = map_data.get('cellSize', 1)
+    cell_m = cell_px * cm_per_px / 100.0
+    coords = []
+    for r in range(rows):
+        row = []
+        for c in range(cols):
+            lat = origin_lat + (r * cell_m / 111320)
+            lon = origin_lon + (
+                c * cell_m / (111320 * math.cos(math.radians(origin_lat)))
+            )
+            row.append({'lat': lat, 'lon': lon})
+        coords.append(row)
+    return {'origin': {'lat': origin_lat, 'lon': origin_lon}, 'cells': coords}
 
 
 @app.route('/api/csv-maps', methods=['GET', 'POST'])
@@ -340,6 +377,16 @@ def grid():
     if current_grid is None:
         return jsonify({'error': 'no map'}), 404
     return jsonify(current_grid)
+
+
+@app.route('/api/grid-geo')
+def grid_geo():
+    if current_map is None:
+        return jsonify({'error': 'no map'}), 404
+    origin_lat = float(request.args.get('lat', 50.0))
+    origin_lon = float(request.args.get('lon', 8.0))
+    geo = grid_to_geo(current_map, origin_lat, origin_lon)
+    return jsonify(geo)
 
 
 @app.route('/api/slam-map')
