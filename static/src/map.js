@@ -62,7 +62,7 @@ export class GameMap {
       margin: this.margin,
       obstacles: this.obstacles.map((o) => ({ x: o.x, y: o.y, size: o.size })),
       target: this.target
-        ? { x: this.target.x, y: this.target.y, size: this.target.radius }
+        ? { x: this.target.x, y: this.target.y, size: this.target.size }
         : null,
       waypoints: this.waypoints.map((w) => ({ x: w.x, y: w.y, size: w.size })),
     };
