@@ -1,4 +1,4 @@
-import { Car } from './car/car.js';
+import { createCar, carImage } from './car/setup.js';
 import { GameMap } from './map/map.js';
 import { Obstacle } from './map/Obstacle.js';
 import { Target } from './map/Target.js';
@@ -313,7 +313,6 @@ function respawnTarget() {
   }
 }
 
-const carImage = new Image();
 carImage.onload = () => {
   resizeCanvas();
   updateObstacleOptions();
@@ -327,15 +326,7 @@ carImage.onload = () => {
   pollControl(car);
   loop();
 };
-carImage.src = '/static/extracted_foreground.png';
-const HOTBOX_WIDTH_CM = 40;
-const HOTBOX_HEIGHT_CM = 20;
-const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
-  startX: 100,
-  startY: 100,
-  hitboxWidth: HOTBOX_WIDTH_CM / CM_PER_PX,
-  hitboxHeight: HOTBOX_HEIGHT_CM / CM_PER_PX,
-});
+const car = createCar(ctx, obstacles, CM_PER_PX);
 car.autopilot = controlMode === 'mouse';
 refreshCarObjects();
 
