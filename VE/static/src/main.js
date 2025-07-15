@@ -5,8 +5,8 @@ import { Target } from './map/Target.js';
 import { Waypoint } from './map/Waypoint.js';
 import { generateBorder } from './map/mapGenerator.js';
 import * as db from './map/db.js';
-import { sendAction } from './autopilot/index.js';
-import { CONTROL_API_URL, TELEMETRY_API_URL } from './api/config.js';
+import { pollControl, sendTelemetry } from './api/telemetry.js';
+import { loadSequences, runSequence, getFormatFromFile } from './sequences/runner.js';
 
 function pushMapToServer(gameMap, name = 'map') {
   const data = gameMap.toJSON ? gameMap.toJSON() : gameMap;
@@ -185,164 +185,6 @@ let lastTelemetry = 0;
 
 const CONTROL_POLL_INTERVAL = 200; // ms
 
-async function pollControl() {
-  try {
-    const res = await fetch(CONTROL_API_URL);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.action) car.setKeysFromAction(data.action);
-  } catch (err) {
-    console.error('pollControl failed', err);
-  }
-}
-
-async function loadSequences() {
-  if (!sequenceSelect) return;
-  sequenceSelect.innerHTML = '';
-  const res = await fetch('/api/sequences');
-  if (!res.ok) return;
-  const list = await res.json();
-  for (const s of list) {
-    const opt = document.createElement('option');
-    opt.value = s.file;
-    opt.textContent = s.name;
-    opt.dataset.format = s.format || 'csv';
-    sequenceSelect.appendChild(opt);
-  }
-}
-
-function getSensorValue(name) {
-  name = name.toLowerCase();
-  if (name === 'front' || name === 'red') return car.frontDistance;
-  if (name === 'left') return car.leftDistance;
-  if (name === 'right') return car.rightDistance;
-  if (name === 'back' || name === 'rear') return car.rearDistance;
-  return Infinity;
-}
-
-function evaluateCondition(val, op, target) {
-  switch (op) {
-    case '<':
-      return val < target;
-    case '>':
-      return val > target;
-    case '<=':
-      return val <= target;
-    case '>=':
-      return val >= target;
-    case '==':
-      return val == target;
-    case '!=':
-      return val != target;
-  }
-  return false;
-}
-
-async function runSequence(file, format) {
-  if (!file) return;
-  const res = await fetch('/static/sequences/' + encodeURIComponent(file));
-  if (!res.ok) return;
-
-  let steps = [];
-  if (format === 'json' || file.endsWith('.json')) {
-    steps = await res.json();
-  } else {
-    const text = await res.text();
-    steps = parseTextSequence(text, format);
-  }
-  await executeSteps(steps);
-}
-
-function parseTextSequence(text, format) {
-  const steps = [];
-  const lines = text.trim().split(/\r?\n/);
-  for (const line of lines) {
-    if (!line) continue;
-    const ifMatch = line.match(/^if\s+(\w+)\s*(<=|>=|==|!=|<|>)\s*(\d+(?:\.\d+)?)\s+then\s+(\w+)\s+(\d+(?:\.\d+)?)\s+else\s+(\w+)\s+(\d+(?:\.\d+)?)/i);
-    if (ifMatch) {
-      const [, sensor, op, val, a1, d1, a2, d2] = ifMatch;
-      steps.push({
-        condition: { sensor, op, value: parseFloat(val) },
-        then: { action: a1, duration: parseFloat(d1) },
-        else: { action: a2, duration: parseFloat(d2) },
-      });
-    } else {
-      const forMatch = line.match(/^for\s+(\d+)\s+(\w+)\s+(\d+(?:\.\d+)?)/i);
-      if (forMatch) {
-        const [, cnt, act, dur] = forMatch;
-        steps.push({ action: act, duration: parseFloat(dur), repeat: parseInt(cnt) });
-      } else {
-        let action, dur;
-        if (format === 'csv') {
-          [action, dur] = line.split(',');
-        } else {
-          [action, dur] = line.split(/\s+/);
-        }
-        dur = parseFloat(dur);
-        if (action && !isNaN(dur)) steps.push({ action, duration: dur });
-      }
-    }
-  }
-  return steps;
-}
-
-async function executeSteps(steps) {
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  for (const step of steps) {
-    if (step.action) {
-      const reps = step.repeat || 1;
-      for (let i = 0; i < reps; i++) {
-        if (step.action === 'left' || step.action === 'right') {
-          await sendAction(car, step.action, step.duration);
-        } else {
-          await sendAction(car, step.action);
-          await sleep(step.duration * 1000);
-          await sendAction(car, 'stop');
-        }
-      }
-    } else if (step.condition || step.if) {
-      const cond = step.condition || step.if;
-      const thenSteps = step.then || cond.then;
-      const elseSteps = step.else || cond.else;
-      const val = getSensorValue(cond.sensor);
-      const target = evaluateCondition(val, cond.op, cond.value)
-        ? thenSteps
-        : elseSteps;
-      await executeSteps(Array.isArray(target) ? target : [target]);
-    } else if (step.loop) {
-      for (let i = 0; i < step.loop.repeat; i++) {
-        await executeSteps(step.loop.steps);
-      }
-    } else if (step.while) {
-      while (evaluateCondition(getSensorValue(step.while.sensor), step.while.op, step.while.value)) {
-        await executeSteps(step.while.steps);
-      }
-    } else if (step.call) {
-      await runSequence(step.call, getFormatFromFile(step.call));
-    }
-  }
-}
-
-function getFormatFromFile(file) {
-  if (file.endsWith('.ros')) return 'ros';
-  if (file.endsWith('.json')) return 'json';
-  return 'csv';
-}
-
-function sendTelemetry(front, rear, left, right) {
-  fetch(TELEMETRY_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      speed: car.speed,
-      rpm: car.rpm,
-      gyro: car.gyro,
-      pos_x: car.posX,
-      pos_y: car.posY,
-      distances: { front, rear, left, right },
-    }),
-  }).catch((err) => console.error('sendTelemetry failed', err));
-}
 
 let CELL_SIZE = parseFloat(cellCmInput.value) / CM_PER_PX;
 const initialWidthCm = parseFloat(widthCmInput.value);
@@ -475,14 +317,14 @@ const carImage = new Image();
 carImage.onload = () => {
   resizeCanvas();
   updateObstacleOptions();
-  loadSequences();
+  loadSequences(sequenceSelect);
   if (runSequenceBtn)
     runSequenceBtn.addEventListener('click', () => {
       const opt = sequenceSelect.options[sequenceSelect.selectedIndex];
-      if (opt) runSequence(opt.value, opt.dataset.format);
+      if (opt) runSequence(car, opt.value, opt.dataset.format);
     });
-  setInterval(pollControl, CONTROL_POLL_INTERVAL);
-  pollControl();
+  setInterval(() => pollControl(car), CONTROL_POLL_INTERVAL);
+  pollControl(car);
   loop();
 };
 carImage.src = '/static/extracted_foreground.png';
@@ -950,7 +792,7 @@ function loop() {
     const rear = Math.round(bb);
     const left = Math.round(Math.min(bl1, bl2));
     const right = Math.round(Math.min(br1, br2));
-    sendTelemetry(front, rear, left, right);
+    sendTelemetry(car, front, rear, left, right);
     lastTelemetry = now;
   }
 
