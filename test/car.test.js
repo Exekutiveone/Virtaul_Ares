@@ -25,3 +25,11 @@ test('straight command resets angleOverride', () => {
   assert.equal(car.angleOverride, false);
   assert.equal(car.steeringAngle, 0);
 });
+
+test('pressing left or right moves forward', () => {
+  const car = new Car({}, {}, 1, 10, []);
+  car.draw = () => {};
+  car.keys.ArrowLeft = true;
+  car.update(800, 600);
+  assert.equal(car.velocity, car.accelRate);
+});

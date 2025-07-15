@@ -87,7 +87,7 @@ export class Car {
 
     // Steering state in radians
     this.steeringAngle = 0;
-    this.maxSteering = (70 * Math.PI) / 180;
+    this.maxSteering = (60 * Math.PI) / 180;
     // Reduced steering sensitivity
     this.steerRate = 0.015;
     this.wheelBase = 50;
@@ -478,7 +478,9 @@ export class Car {
       this.acceleration = 0;
       this.velocity = this.fixedSpeed / 60;
     } else {
-      if (this.keys.ArrowUp) this.acceleration = this.accelRate;
+      const steeringOnly =
+        (this.keys.ArrowLeft || this.keys.ArrowRight) && !this.keys.ArrowDown;
+      if (this.keys.ArrowUp || steeringOnly) this.acceleration = this.accelRate;
       else if (this.keys.ArrowDown) this.acceleration = -this.accelRate;
       else
         this.acceleration =
