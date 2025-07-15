@@ -11,6 +11,7 @@ export function getCurrentMapData(gameMap) {
           size: gameMap.target.radius,
         }
       : null,
+    waypoints: gameMap.waypoints.map((w) => ({ x: w.x, y: w.y, size: w.size })),
   };
 }
 

@@ -1,6 +1,7 @@
 import { GameMap } from './map.js';
 import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
+import { Waypoint } from './Waypoint.js';
 
 export function parseCsvMap(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -16,6 +17,14 @@ export function parseCsvMap(text) {
         parseFloat(parts[1]),
         parseFloat(parts[2]),
         parseFloat(parts[3]),
+      );
+    } else if (parts[0] === 'waypoint') {
+      gm.waypoints.push(
+        new Waypoint(
+          parseFloat(parts[1]),
+          parseFloat(parts[2]),
+          parseFloat(parts[3]),
+        ),
       );
     } else if (parts[0] === 'obstacle') {
       gm.obstacles.push(
@@ -43,6 +52,9 @@ export function serializeCsvMap(gameMap) {
         gameMap.target.radius,
       ].join(','),
     );
+  }
+  for (const w of gameMap.waypoints) {
+    lines.push(['waypoint', w.x, w.y, w.size].join(','));
   }
   for (const o of gameMap.obstacles) {
     lines.push(['obstacle', o.x, o.y, o.size].join(','));
