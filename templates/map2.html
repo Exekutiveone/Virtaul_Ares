@@ -177,7 +177,9 @@
         <select id="sequenceSelect"></select>
       </label>
       <button id="runSequenceBtn">Ausführen</button>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:5px">
+      <div style="margin-left:auto;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        <div class="cone-display">X: <span id="posX">0</span> px</div>
+        <div class="cone-display">Y: <span id="posY">0</span> px</div>
         <label for="controlMode">Steuerung:</label>
         <select id="controlMode">
           <option value="wasd">WASD</option>

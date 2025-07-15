@@ -64,6 +64,8 @@ const speedSlider = document.getElementById('speedSlider');
 const speedSliderVal = document.getElementById('speedSliderVal');
 const rpmEl = document.getElementById('rpm');
 const gyroEl = document.getElementById('gyro');
+const posXEl = document.getElementById('posX');
+const posYEl = document.getElementById('posY');
 const slamCoverageEl = document.getElementById('slamCoverage');
 const scoreEl = document.getElementById('score');
 let score = 0;
@@ -914,6 +916,8 @@ function loop() {
   speedEl.textContent = Math.round(car.speed);
   rpmEl.textContent = Math.round(car.rpm);
   gyroEl.textContent = car.gyro.toFixed(1);
+  if (posXEl) posXEl.textContent = Math.round(car.posX);
+  if (posYEl) posYEl.textContent = Math.round(car.posY);
 
   const now = Date.now();
   if (now - lastTelemetry >= TELEMETRY_INTERVAL) {
