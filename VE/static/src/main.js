@@ -718,7 +718,6 @@ function loop() {
       updateScoreBoard();
       targetMarker = null;
       nextMap();
-      return;
     }
   }
   for (const wp of waypoints) {
