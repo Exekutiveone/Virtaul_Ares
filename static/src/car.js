@@ -17,6 +17,7 @@ export class Car {
     this.scale = scale;
     this.margin = margin;
     this.objects = objects;
+    this.crashed = false;
 
     this.showHitbox = false;
 
@@ -104,6 +105,7 @@ export class Car {
     this.rpm = 0;
     this.gyro = 0;
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
+    this.crashed = false;
   }
 
   setKeysFromAction(action, value = null) {
@@ -573,11 +575,14 @@ export class Car {
         this.posX = nx;
         this.posY = ny;
         this.rotation = newRotation;
+        this.crashed = false;
       } else {
         this.velocity = this.acceleration = 0;
+        this.crashed = true;
       }
     } else {
       this.velocity = this.acceleration = 0;
+      this.crashed = true;
     }
 
     this.speed = Math.abs(this.velocity * 60);

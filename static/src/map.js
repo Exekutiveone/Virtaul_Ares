@@ -1,5 +1,6 @@
 import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
+import { Waypoint } from './Waypoint.js';
 
 export class GameMap {
   constructor(cols, rows, cellSize = 40, margin = 0) {
@@ -9,6 +10,7 @@ export class GameMap {
     this.margin = margin;
     this.obstacles = [];
     this.target = null;
+    this.waypoints = [];
   }
 
   get width() {
@@ -62,6 +64,7 @@ export class GameMap {
       target: this.target
         ? { x: this.target.x, y: this.target.y, size: this.target.radius }
         : null,
+      waypoints: this.waypoints.map((w) => ({ x: w.x, y: w.y, size: w.size })),
     };
   }
 
@@ -73,6 +76,9 @@ export class GameMap {
     gm.target = obj.target
       ? new Target(obj.target.x, obj.target.y, obj.target.size)
       : null;
+    if (obj.waypoints) {
+      gm.waypoints = obj.waypoints.map((w) => new Waypoint(w.x, w.y, w.size));
+    }
     return gm;
   }
 }

@@ -2,6 +2,7 @@ import { Car } from './car.js';
 import { GameMap } from './map.js';
 import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
+import { Waypoint } from './Waypoint.js';
 import { generateBorder } from './mapGenerator.js';
 import * as db from './db.js';
 import { sendAction } from './autopilot/index.js';
@@ -18,6 +19,7 @@ function pushMapToServer(gameMap, name = 'map') {
 
 // 1 Pixel entspricht dieser Anzahl Zentimeter
 const CM_PER_PX = 2;
+const WAYPOINT_SIZE = 20 / CM_PER_PX;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -63,7 +65,15 @@ const speedSliderVal = document.getElementById('speedSliderVal');
 const rpmEl = document.getElementById('rpm');
 const gyroEl = document.getElementById('gyro');
 const slamCoverageEl = document.getElementById('slamCoverage');
+const scoreEl = document.getElementById('score');
+let score = 0;
+let coverageScore = 0;
 let coverageInterval = null;
+let lastCrash = false;
+
+function updateScoreBoard() {
+  if (scoreEl) scoreEl.textContent = score;
+}
 let mapList = [];
 let currentMapIndex = -1;
 const cellCmInput = document.getElementById('gridCellCm');
@@ -112,6 +122,8 @@ if (slamCheckbox) {
       revealCar();
       if (coverageInterval) clearInterval(coverageInterval);
       coverageInterval = setInterval(updateSlamCoverage, 1000);
+      coverageScore = 0;
+      updateScoreBoard();
       updateSlamCoverage();
     } else {
       slamCanvas.style.display = 'none';
@@ -119,6 +131,8 @@ if (slamCheckbox) {
       prevCarRect = null;
       if (coverageInterval) clearInterval(coverageInterval);
       if (slamCoverageEl) slamCoverageEl.textContent = '0%';
+      coverageScore = 0;
+      updateScoreBoard();
     }
   });
 }
@@ -353,6 +367,7 @@ if (csvMapUrl) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    waypoints = gameMap.waypoints || [];
     cellCmInput.value = Math.round(gameMap.cellSize * CM_PER_PX);
     updateObstacleOptions();
     refreshCarObjects();
@@ -363,6 +378,7 @@ if (csvMapUrl) {
   });
 }
 let obstacles = gameMap.obstacles;
+let waypoints = gameMap.waypoints || [];
 previewSize =
   typeSelect.value === 'target'
     ? CELL_SIZE
@@ -471,7 +487,9 @@ function updateObstacleOptions() {
   previewSize =
     typeSelect.value === 'target'
       ? CELL_SIZE
-      : parseInt(sizeInput.value) * CELL_SIZE;
+      : typeSelect.value === 'waypoint'
+        ? WAYPOINT_SIZE
+        : parseInt(sizeInput.value) * CELL_SIZE;
 }
 
 function resizeCanvas() {
@@ -610,6 +628,12 @@ function updateSlamCoverage() {
   const total = slamCanvas.width * slamCanvas.height;
   const percent = (cleared / total) * 100;
   slamCoverageEl.textContent = percent.toFixed(1) + '%';
+  const pts = Math.floor(percent);
+  if (pts !== coverageScore) {
+    score += pts - coverageScore;
+    coverageScore = pts;
+    updateScoreBoard();
+  }
 }
 
 function updatePreview() {
@@ -652,6 +676,14 @@ canvas.addEventListener('mouseup', () => {
     targetMarker = new Target(dragX, dragY, previewSize);
     gameMap.target = targetMarker;
     refreshCarObjects();
+  } else if (selected === 'waypoint') {
+    if (removeCheckbox.checked) {
+      const idx = waypoints.findIndex((w) => w.x === dragX && w.y === dragY);
+      if (idx !== -1) waypoints.splice(idx, 1);
+    } else if (!waypoints.some((w) => w.x === dragX && w.y === dragY)) {
+      waypoints.push(new Waypoint(dragX, dragY, WAYPOINT_SIZE));
+    }
+    gameMap.waypoints = waypoints;
   } else if (selected === 'corner') {
     if (removeCheckbox.checked) {
       const idx = cornerPoints.findIndex((p) => p.x === dragX && p.y === dragY);
@@ -768,6 +800,9 @@ function loop() {
     o.draw(ctx);
     if (showHitboxes && typeof o.drawHitbox === 'function') o.drawHitbox(ctx);
   }
+  for (const w of waypoints) {
+    w.draw(ctx);
+  }
   for (const p of cornerPoints) {
     ctx.fillStyle = 'red';
     ctx.fillRect(p.x, p.y, previewSize, previewSize);
@@ -793,9 +828,16 @@ function loop() {
   }
   car.showHitbox = showHitboxes;
   car.update(canvas.width, canvas.height);
+  if (car.crashed && !lastCrash) {
+    score -= 10;
+    updateScoreBoard();
+    lastCrash = true;
+  } else if (!car.crashed) {
+    lastCrash = false;
+  }
   autoFollowCar();
+  const bboxCurrent = car.getBoundingBox(car.posX, car.posY);
   if (targetMarker) {
-    const bboxCurrent = car.getBoundingBox(car.posX, car.posY);
     if (
       targetMarker.intersectsRect(
         bboxCurrent.x,
@@ -804,7 +846,25 @@ function loop() {
         bboxCurrent.h,
       )
     ) {
-      respawnTarget();
+      score += 100;
+      updateScoreBoard();
+      loadMapByIndex(currentMapIndex + 1);
+      return;
+    }
+  }
+  for (const wp of waypoints) {
+    if (
+      wp.active &&
+      wp.intersectsRect(
+        bboxCurrent.x,
+        bboxCurrent.y,
+        bboxCurrent.w,
+        bboxCurrent.h,
+      )
+    ) {
+      wp.active = false;
+      score += 10;
+      updateScoreBoard();
     }
   }
 
@@ -877,11 +937,14 @@ function loadMapFile(e) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
     pushMapToServer(gameMap, file.name || 'map');
+    coverageScore = 0;
+    updateScoreBoard();
   });
 }
 
@@ -894,11 +957,14 @@ function loadMapCsv(e) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
     pushMapToServer(gameMap, file.name || 'map');
+    coverageScore = 0;
+    updateScoreBoard();
   });
 }
 
@@ -914,6 +980,7 @@ function loadMapByIndex(idx) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
@@ -927,6 +994,8 @@ function loadMapByIndex(idx) {
       updateSlamCoverage();
     }
     car.reset();
+    coverageScore = 0;
+    updateScoreBoard();
   });
 }
 
@@ -936,6 +1005,7 @@ function resetMap() {
   CELL_SIZE = gameMap.cellSize;
   obstacles = gameMap.obstacles;
   targetMarker = gameMap.target;
+  waypoints = gameMap.waypoints || [];
   refreshCarObjects();
   widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
   heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
@@ -949,6 +1019,8 @@ function resetMap() {
     updateSlamCoverage();
   }
   car.reset();
+  coverageScore = 0;
+  updateScoreBoard();
 }
 
 if (editorMode) {
