@@ -35,6 +35,8 @@ const slamCanvas = document.getElementById('slamCanvas');
 const slamCtx = slamCanvas.getContext('2d');
 let slamMode = false;
 let prevCarRect = null;
+// Store all hit locations so repeated scans do not remove markers
+const slamHits = [];
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
 const connectCornersBtn = document.getElementById('connectCorners');
@@ -122,6 +124,7 @@ if (slamCheckbox) {
       slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
       slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
       prevCarRect = null;
+      slamHits.length = 0;
       revealCar();
       if (coverageInterval) clearInterval(coverageInterval);
       coverageInterval = setInterval(updateSlamCoverage, 1000);
@@ -132,6 +135,7 @@ if (slamCheckbox) {
       slamCanvas.style.display = 'none';
       slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
       prevCarRect = null;
+      slamHits.length = 0;
       if (coverageInterval) clearInterval(coverageInterval);
       if (slamCoverageEl) slamCoverageEl.textContent = '0%';
       coverageScore = 0;
@@ -504,6 +508,7 @@ function resizeCanvas() {
     slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
     slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
     prevCarRect = null;
+    slamHits.length = 0;
     revealCar();
     updateSlamCoverage();
   }
@@ -598,12 +603,19 @@ function revealCone(x, y, length, angle, baseWidth) {
     (hx, hy) => (hit = { x: hx, y: hy }),
   );
   slamCtx.restore();
-  if (hit) {
-    slamCtx.fillStyle = 'red';
+  if (hit) slamHits.push(hit);
+  drawSlamHits();
+}
+
+function drawSlamHits() {
+  slamCtx.save();
+  slamCtx.fillStyle = 'red';
+  for (const p of slamHits) {
     slamCtx.beginPath();
-    slamCtx.arc(hit.x, hit.y, 3, 0, 2 * Math.PI);
+    slamCtx.arc(p.x, p.y, 3, 0, 2 * Math.PI);
     slamCtx.fill();
   }
+  slamCtx.restore();
 }
 
 function revealCar() {
@@ -619,6 +631,7 @@ function revealCar() {
   slamCtx.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
   slamCtx.restore();
   prevCarRect = bbox;
+  drawSlamHits();
 }
 
 function updateSlamCoverage() {
@@ -996,6 +1009,7 @@ function loadMapByIndex(idx) {
       slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
       slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
       prevCarRect = null;
+      slamHits.length = 0;
       revealCar();
       updateSlamCoverage();
     }
@@ -1021,6 +1035,7 @@ function resetMap() {
     slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
     slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
     prevCarRect = null;
+    slamHits.length = 0;
     revealCar();
     updateSlamCoverage();
   }

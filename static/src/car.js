@@ -360,26 +360,10 @@ export class Car {
 
     const segment = { x: fx, y: fy, angle, length: minDist };
 
-    if (!bestNormal || minDist >= length) return [segment];
-
-    const ix = fx + Math.cos(angle) * minDist;
-    const iy = fy + Math.sin(angle) * minDist;
-
-    const nAngle = Math.atan2(bestNormal[1], bestNormal[0]);
-    let tAngle1 = nAngle + Math.PI / 2;
-    let tAngle2 = nAngle - Math.PI / 2;
-    const diff1 = Math.abs(this.normAngle(tAngle1 - angle));
-    const diff2 = Math.abs(this.normAngle(tAngle2 - angle));
-    const newAngle = diff1 < diff2 ? tAngle1 : tAngle2;
-
-    const rest = this.castRayPath(
-      ix + Math.cos(newAngle) * 0.1,
-      iy + Math.sin(newAngle) * 0.1,
-      newAngle,
-      length - minDist,
-      depth + 1,
-    );
-    return [segment, ...rest];
+    // Only return the first segment up to the initial hit without
+    // following the wall. This prevents reflections or wall hugging
+    // behaviour for simulated sensors.
+    return [segment];
   }
 
   drawKegel(
