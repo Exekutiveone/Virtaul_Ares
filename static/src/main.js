@@ -1,12 +1,12 @@
-import { Car } from './car.js';
-import { GameMap } from './map.js';
-import { Obstacle } from './Obstacle.js';
-import { Target } from './Target.js';
-import { Waypoint } from './Waypoint.js';
-import { generateBorder } from './mapGenerator.js';
-import * as db from './db.js';
+import { Car } from './car/car.js';
+import { GameMap } from './map/map.js';
+import { Obstacle } from './map/Obstacle.js';
+import { Target } from './map/Target.js';
+import { Waypoint } from './map/Waypoint.js';
+import { generateBorder } from './map/mapGenerator.js';
+import * as db from './map/db.js';
 import { sendAction } from './autopilot/index.js';
-import { CONTROL_API_URL, TELEMETRY_API_URL } from './config.js';
+import { CONTROL_API_URL, TELEMETRY_API_URL } from './api/config.js';
 
 function pushMapToServer(gameMap, name = 'map') {
   const data = gameMap.toJSON ? gameMap.toJSON() : gameMap;
