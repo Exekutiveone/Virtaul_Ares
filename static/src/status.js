@@ -6,6 +6,9 @@ const baseSlamWidth = slamCanvas.width;
 const baseSlamHeight = slamCanvas.height;
 
 const CELL = 10; // pixel size of each grid cell
+// The mapping uses the same scale as the main interface where
+// each pixel represents this many centimeters in the real world.
+const CM_PER_PX = 2;
 const cols = Math.floor(canvas.width / CELL);
 const rows = Math.floor(canvas.height / CELL);
 const grid = Array.from({ length: rows }, () => Array(cols).fill(0)); // 0=unknown,1=free,2=obstacle
@@ -26,13 +29,22 @@ function drawGrid() {
     ctx.beginPath();
     ctx.arc(lastPos.x, lastPos.y, 4, 0, 2 * Math.PI);
     ctx.fill();
-    // Display the coordinates in the top right corner
+    // Display the coordinates in the top right corner using pixels
     ctx.fillStyle = '#fff';
     ctx.font = '12px Arial';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
     const coordText = `(${Math.round(lastPos.x)}, ${Math.round(lastPos.y)})`;
     ctx.fillText(coordText, canvas.width - 4, 4);
+
+    // Also display the real world coordinates next to the current
+    // position using the defined scale.
+    const xCm = lastPos.x * CM_PER_PX;
+    const yCm = lastPos.y * CM_PER_PX;
+    const realText = `${(xCm / 100).toFixed(2)}m, ${(yCm / 100).toFixed(2)}m`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(realText, lastPos.x + 6, lastPos.y - 6);
   }
 }
 
