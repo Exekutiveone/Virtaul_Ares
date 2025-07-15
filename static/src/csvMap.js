@@ -49,7 +49,7 @@ export function serializeCsvMap(gameMap) {
         'target',
         gameMap.target.x,
         gameMap.target.y,
-        gameMap.target.radius,
+        gameMap.target.size,
       ].join(','),
     );
   }

@@ -20,6 +20,7 @@ function pushMapToServer(gameMap, name = 'map') {
 // 1 Pixel entspricht dieser Anzahl Zentimeter
 const CM_PER_PX = 2;
 const WAYPOINT_SIZE = 20 / CM_PER_PX;
+const TARGET_SIZE = 20;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -436,7 +437,7 @@ function refreshCarObjects() {
 }
 
 function respawnTarget() {
-  const size = targetMarker ? targetMarker.size : CELL_SIZE;
+  const size = targetMarker ? targetMarker.size : TARGET_SIZE;
   for (let i = 0; i < 100; i++) {
     const col = Math.floor(Math.random() * gameMap.cols);
     const row = Math.floor(Math.random() * gameMap.rows);
@@ -520,7 +521,7 @@ function paintCell(x, y) {
       targetMarker &&
       x === targetMarker.x &&
       y === targetMarker.y &&
-      previewSize === targetMarker.radius
+      previewSize === targetMarker.size
     ) {
       targetMarker = null;
       gameMap.target = null;
@@ -850,6 +851,7 @@ function loop() {
     ) {
       score += 100;
       updateScoreBoard();
+      targetMarker = null;
       loadMapByIndex(currentMapIndex + 1);
       return;
     }
