@@ -1,23 +1,44 @@
 # Virtual Ares
 
-This repository contains a small browser based car simulator. The page `map2.html` loads several JavaScript modules from the `src` directory and renders a grid on which a car can drive. Obstacles and a target can be placed on the map.
+Virtual Ares is a small browser based car simulator. It contains two main parts:
+
+- **VE/** provides the Flask server and the JavaScript front end.
+- **RL/** contains a simple reinforcement learning agent used for experiments with the simulator.
+
+The HTML page `map2.html` loads the modules from `static/src` and renders a grid based map on which a car can drive. Obstacles, a target and optional waypoints can be placed on the map.
 
 ## Running the simulation
 
-Run the Flask application which serves both the HTML interface and the API
-endpoints:
+Install the Python dependencies and start the Flask server:
 
 ```bash
-python server.py
+pip install -r requirements.txt
+python VE/server.py
 ```
 
-Then open `http://127.0.0.1:5000/` in your browser. The server exposes the
-following services:
-- `http://127.0.0.1:5000/api/car` for reading or sending telemetry data.
-- `http://127.0.0.1:5000/api/control` for remote control commands.
-- `http://127.0.0.1:5000/api/grid` for the current occupancy grid.
-The map editor is available at `http://127.0.0.1:5000/map2`. A simple view of the
-API output can be found at `http://127.0.0.1:5000/status`.
+Open `http://127.0.0.1:5000/` in your browser. The following API endpoints are available:
+
+- `/api/car` – read or send telemetry data
+- `/api/control` – remote control commands
+- `/api/grid` – current occupancy grid
+- `/api/slam-map` – simplified SLAM map of the environment
+
+The interactive map editor can be found at `http://127.0.0.1:5000/map2` and a
+status page with the raw API output at `http://127.0.0.1:5000/status`.
+
+## Reinforcement learning
+
+The `RL` folder implements a small DQN agent that communicates with the running
+Flask server. Start the server first and then run the training script:
+
+```bash
+cd RL
+python train.py
+```
+
+Training progress is written to `rl_log.csv`. The agent itself is defined in
+`Agent.py`, the environment wrapper in `environment.py` and logging is handled by
+`logger.py`.
 
 ## Saving and loading maps
 
@@ -33,7 +54,7 @@ the original file instead of downloading a new one.
 Sequences of actions can be stored under `static/sequences`. Each line of a
 sequence normally consists of an action and a duration in seconds:
 
-```
+```text
 forward,1
 left,0.5
 ```
@@ -41,7 +62,7 @@ left,0.5
 It is also possible to use conditional statements based on the sensor values.
 An example line looks like this:
 
-```
+```text
 if front < 50 then backward 1 else forward 1
 ```
 
@@ -56,7 +77,7 @@ actions for the *then* and *else* branches.
 
 You can also repeat actions multiple times using a simple `for` statement:
 
-```
+```text
 for 3 forward 1
 ```
 
@@ -80,9 +101,76 @@ execution the referenced file is loaded and its steps are executed. This allows
 modularizing complex behaviours.
 
 Existing sequences saved in JSON format can be loaded back into the editor
-through the new **Vorhanden** drop-down and the **Laden** button. This makes it
+through the **Vorhanden** drop-down and the **Laden** button. This makes it
 possible to edit and extend previously created command sequences.
 
 Sequences saved as CSV or ROS files can also be loaded. When imported, they are
 converted into simple action lists so they can be further adjusted and saved
 again, e.g. in JSON format for advanced features.
+
+## Class overview
+
+The following Mermaid diagram illustrates the main classes in the repository and
+their relationships:
+
+```mermaid
+classDiagram
+    class DQNAgent {
+        +memory
+        +epsilon
+        +act(state)
+        +remember(s,a,r,s2,done)
+        +replay(batch)
+    }
+    class ServerEnv {
+        +base_url
+        +reset()
+        +get_state()
+        +send_action(idx)
+        +compute_reward(s,s2)
+    }
+    class Logger {
+        +log(ep,st,act,state,reward,done,eps)
+    }
+    class Car {
+        +posX
+        +posY
+        +velocity
+        +update()
+        +draw()
+    }
+    class GameMap {
+        +obstacles
+        +target
+        +waypoints
+        +drawGrid()
+        +toJSON()
+    }
+    class Obstacle {
+        +x
+        +y
+        +size
+        +intersectsRect()
+    }
+    class Target {
+        +x
+        +y
+        +size
+        +intersectsRect()
+    }
+    class Waypoint {
+        +x
+        +y
+        +size
+        +active
+        +intersectsRect()
+    }
+    GameMap "1" *-- "*" Obstacle
+    GameMap "0..1" *-- "1" Target
+    GameMap "*" *-- "*" Waypoint
+    Car o-- GameMap
+    DQNAgent --> ServerEnv
+    train.py --> DQNAgent
+    train.py --> ServerEnv
+    train.py --> Logger
+```
