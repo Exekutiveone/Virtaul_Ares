@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Car } from '../static/src/car.js';
+import { Car } from '../static/src/car/car.js';
 
 global.window = { addEventListener() {} };
 

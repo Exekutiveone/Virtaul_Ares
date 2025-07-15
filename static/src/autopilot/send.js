@@ -1,4 +1,4 @@
-import { CONTROL_API_URL } from '../config.js';
+import { CONTROL_API_URL } from '../api/config.js';
 
 export function sendAction(car, action, value = null) {
   car.setKeysFromAction(action, value);
