@@ -7,6 +7,8 @@ import { Waypoint } from './map/Waypoint.js';
 import { generateBorder } from './map/mapGenerator.js';
 import * as db from './map/db.js';
 import { pollControl, sendTelemetry } from './api/telemetry.js';
+import * as ui from './ui/index.js';
+import { setupK } from './k/index.js';
 import {
   pushMap,
   fetchCsvMapList,
@@ -20,74 +22,26 @@ import { loadSequences, runSequence, getFormatFromFile } from './sequences/runne
 // ========================= Car =========================
 // =========================     =========================
 
+const showHitboxesRef = { value: false };
+const zoomState = { mode: false, scale: 1, translateX: 0, translateY: 0 };
+let car;
+let updateMouseFollow;
 
-// ========================= Mausbasierte Car-Steuerung =========================
-function updateMouseFollow() {
-  if (!mouseTarget) return;
-  if (car.pointInHitbox(mouseTarget.x, mouseTarget.y)) {
-    for (const k of Object.keys(car.keys)) car.keys[k] = false;
-    car.velocity = 0;
-    car.angularVelocity = 0;
-    car.acceleration = 0;
-    car.angularAcceleration = 0;
-    return;
-  }
-  const cx = car.posX + car.imgWidth / 2;
-  const cy = car.posY + car.imgHeight / 2;
-  const angle = Math.atan2(mouseTarget.y - cy, mouseTarget.x - cx);
-  let diff = angle - (car.rotation + Math.PI);
-  while (diff > Math.PI) diff -= 2 * Math.PI;
-  while (diff < -Math.PI) diff += 2 * Math.PI;
-  for (const k of Object.keys(car.keys)) car.keys[k] = false;
-  const dist = Math.hypot(mouseTarget.x - cx, mouseTarget.y - cy);
-  if (Math.abs(diff) > 0.1) {
-    car.keys[diff > 0 ? 'ArrowRight' : 'ArrowLeft'] = true;
-  } else if (dist > 10) {
-    car.keys.ArrowUp = true;
-  } else {
-    car.velocity = 0;
-    car.angularVelocity = 0;
-    car.acceleration = 0;
-    car.angularAcceleration = 0;
-  }
+function initCar() {
+  const result = setupK(ctx, obstacles, ui.CM_PER_PX, {
+    controlModeRef: { value: ui.controlMode },
+    keyMap: ui.keyMap,
+    sequenceSelect: ui.sequenceSelect,
+    runSequenceBtn: ui.runSequenceBtn,
+    refreshCarObjects,
+    resizeCanvas,
+    updateObstacleOptions,
+    controlPollInterval: CONTROL_POLL_INTERVAL,
+    loop,
+  });
+  car = result.car;
+  updateMouseFollow = result.updateMouseFollow;
 }
-
-// ========================= Tastatursteuerung =========================
-window.addEventListener('keydown', (e) => {
-  if (controlMode !== 'wasd') return;
-  const k = keyMap[e.key.toLowerCase()];
-  if (k) {
-    e.preventDefault();
-    car.keys[k] = true;
-  }
-});
-window.addEventListener('keyup', (e) => {
-  if (controlMode !== 'wasd') return;
-  const k = keyMap[e.key.toLowerCase()];
-  if (k) {
-    e.preventDefault();
-    car.keys[k] = false;
-  }
-});
-
-
-// ========================= Car Instanzierung =========================
-carImage.onload = () => {
-  resizeCanvas();
-  updateObstacleOptions();
-  loadSequences(sequenceSelect);
-  if (runSequenceBtn)
-    runSequenceBtn.addEventListener('click', () => {
-      const opt = sequenceSelect.options[sequenceSelect.selectedIndex];
-      if (opt) runSequence(car, opt.value, opt.dataset.format);
-    });
-  setInterval(() => pollControl(car), CONTROL_POLL_INTERVAL);
-  pollControl(car);
-  loop();
-};
-const car = createCar(ctx, obstacles, CM_PER_PX);
-car.autopilot = controlMode === 'mouse';
-refreshCarObjects();
 
 
 
@@ -606,7 +560,8 @@ function loop() {
   drawGrid();
   for (const o of obstacles) {
     o.draw(ctx);
-    if (showHitboxes && typeof o.drawHitbox === 'function') o.drawHitbox(ctx);
+    if (showHitboxesRef.value && typeof o.drawHitbox === 'function')
+      o.drawHitbox(ctx);
   }
   for (const w of waypoints) w.draw(ctx);
   for (const p of cornerPoints) {
@@ -633,7 +588,7 @@ function loop() {
     ctx.strokeRect(dragX, dragY, previewSize, previewSize);
   }
 
-  car.showHitbox = showHitboxes;
+  car.showHitbox = showHitboxesRef.value;
   car.update(canvas.width, canvas.height);
 
   // Score Logic on Crash
@@ -645,7 +600,7 @@ function loop() {
     lastCrash = false;
   }
 
-  autoFollowCar();
+  ui.autoFollowCar(car, zoomState, updateTransform);
 
   // Ziel/Target Treffer
   const bboxCurrent = car.getBoundingBox(car.posX, car.posY);
@@ -925,144 +880,54 @@ if (editorMode) {
 // =========================     =========================
 
 // ========================= Konstanten / UI Bindings =========================
-const CM_PER_PX = 2;
-const WAYPOINT_SIZE = 20 / CM_PER_PX;
-const TARGET_SIZE = 20;
+const {
+  CM_PER_PX,
+  WAYPOINT_SIZE,
+  TARGET_SIZE,
+  canvas,
+  ctx,
+  typeSelect,
+  sizeInput,
+  removeCheckbox,
+  toggleHitboxesBtn,
+  findCarBtn,
+  canvasContainer,
+  slamCheckbox,
+  slamCanvas,
+  slamCtx,
+  slamHits,
+  saveMapCsvBtn,
+  overwriteCsvBtn,
+  connectCornersBtn,
+  loadMapCsvInput,
+  loadMapCsvBtn,
+  sequenceSelect,
+  runSequenceBtn,
+  controlModeSelect,
+  restartBtn,
+  nextMapBtn,
+  keyMap,
+  redEl,
+  greenEl,
+  blueLeft1El,
+  blueLeft2El,
+  blueRight1El,
+  blueRight2El,
+  blueBackEl,
+  speedEl,
+  speedSlider,
+  speedSliderVal,
+  rpmEl,
+  gyroEl,
+  posXEl,
+  posYEl,
+  slamCoverageEl,
+  scoreEl,
+} = ui;
+let { controlMode, mouseTarget, slamMode, prevCarRect, score, coverageScore, coverageInterval, lastCrash } = ui;
 
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const typeSelect = document.getElementById('drawType');
-const sizeInput = document.getElementById('squareSize');
-const removeCheckbox = document.getElementById('removeMode');
-const toggleHitboxesBtn = document.getElementById('toggleHitboxes');
-const findCarBtn = document.getElementById('findCarBtn');
-const canvasContainer = document.getElementById('canvasContainer');
-const slamCheckbox = document.getElementById('slamMode');
-const slamCanvas = document.getElementById('slamCanvas');
-const slamCtx = slamCanvas.getContext('2d');
-
-let slamMode = false;
-let prevCarRect = null;
-const slamHits = []; // für SLAM Marker
-const saveMapCsvBtn = document.getElementById('saveMapCsv');
-const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
-const connectCornersBtn = document.getElementById('connectCorners');
-const loadMapCsvInput = document.getElementById('loadMapCsv');
-const loadMapCsvBtn = document.getElementById('loadMapCsvBtn');
-const sequenceSelect = document.getElementById('sequenceSelect');
-const runSequenceBtn = document.getElementById('runSequenceBtn');
-const controlModeSelect = document.getElementById('controlMode');
-const restartBtn = document.getElementById('restartBtn');
-const nextMapBtn = document.getElementById('nextMapBtn');
-
-
-// ========================= Steuerung & UI States =========================
-let controlMode = controlModeSelect ? controlModeSelect.value : 'wasd';
-let mouseTarget = null;
-const keyMap = {
-  w: 'ArrowUp',
-  a: 'ArrowLeft',
-  s: 'ArrowDown',
-  d: 'ArrowRight',
-};
-
-const redEl = document.getElementById('redLength');
-const greenEl = document.getElementById('greenLength');
-const blueLeft1El = document.getElementById('blueLeft1');
-const blueLeft2El = document.getElementById('blueLeft2');
-const blueRight1El = document.getElementById('blueRight1');
-const blueRight2El = document.getElementById('blueRight2');
-const blueBackEl = document.getElementById('blueBack');
-const speedEl = document.getElementById('speed');
-const speedSlider = document.getElementById('speedSlider');
-const speedSliderVal = document.getElementById('speedSliderVal');
-const rpmEl = document.getElementById('rpm');
-const gyroEl = document.getElementById('gyro');
-const posXEl = document.getElementById('posX');
-const posYEl = document.getElementById('posY');
-const slamCoverageEl = document.getElementById('slamCoverage');
-const scoreEl = document.getElementById('score');
-let score = 0;
-let coverageScore = 0;
-let coverageInterval = null;
-let lastCrash = false;
-
-// ========================= UI Buttons & Sliders =========================
-toggleHitboxesBtn.addEventListener('click', () => {
-  showHitboxes = !showHitboxes;
-  car.showHitbox = showHitboxes;
-  toggleHitboxesBtn.textContent = showHitboxes
-    ? 'Hitboxen verstecken'
-    : 'Hitboxen anzeigen';
-});
-function centerOnCar(radiusCm = 500) {
-  const diameterPx = (radiusCm * 2) / CM_PER_PX;
-  const cw = canvasContainer.clientWidth;
-  const ch = canvasContainer.clientHeight;
-  zoomScale = Math.min(cw / diameterPx, ch / diameterPx);
-  const viewW = cw / zoomScale;
-  const viewH = ch / zoomScale;
-  const carX = car.posX + car.imgWidth / 2;
-  const carY = car.posY + car.imgHeight / 2;
-  translateX = carX - viewW / 2;
-  translateY = carY - viewH / 2;
-  translateX = Math.max(0, Math.min(translateX, canvas.width - viewW));
-  translateY = Math.max(0, Math.min(translateY, canvas.height - viewH));
-  zoomMode = true;
-  updateTransform();
-}
-function autoFollowCar(margin = 50) {
-  const viewW = canvasContainer.clientWidth / zoomScale;
-  const viewH = canvasContainer.clientHeight / zoomScale;
-  let newX = translateX;
-  let newY = translateY;
-
-  if (canvas.width > viewW) {
-    const left = (car.posX - newX) * zoomScale;
-    const right = (car.posX + car.imgWidth - newX) * zoomScale;
-    if (right > canvasContainer.clientWidth - margin) {
-      newX =
-        car.posX +
-        car.imgWidth -
-        (canvasContainer.clientWidth - margin) / zoomScale;
-      newX = Math.min(newX, canvas.width - viewW);
-    } else if (left < margin) {
-      newX = car.posX - margin / zoomScale;
-      newX = Math.max(0, newX);
-    }
-  }
-
-  if (canvas.height > viewH) {
-    const top = (car.posY - newY) * zoomScale;
-    const bottom = (car.posY + car.imgHeight - newY) * zoomScale;
-    if (bottom > canvasContainer.clientHeight - margin) {
-      newY =
-        car.posY +
-        car.imgHeight -
-        (canvasContainer.clientHeight - margin) / zoomScale;
-      newY = Math.min(newY, canvas.height - viewH);
-    } else if (top < margin) {
-      newY = car.posY - margin / zoomScale;
-      newY = Math.max(0, newY);
-    }
-  }
-
-  if (newX !== translateX || newY !== translateY) {
-    translateX = newX;
-    translateY = newY;
-    updateTransform();
-  }
-}
-findCarBtn.addEventListener('click', () => centerOnCar(500));
-if (restartBtn) restartBtn.addEventListener('click', resetMap);
 function nextMap() {
   ensureMapList().then(() => loadMapByIndex(currentMapIndex + 1));
 }
-if (nextMapBtn) nextMapBtn.addEventListener('click', nextMap);
-if (speedSlider) {
-  speedSlider.addEventListener('input', () => {
-    const val = parseFloat(speedSlider.value);
-    if (speedSliderVal) speedSliderVal.textContent = val;
-    car.fixedSpeed = val > 0 ? val : null;
-  });
-}
+
+ui.setupUI(car, showHitboxesRef, zoomState, updateTransform, resetMap, nextMap);
