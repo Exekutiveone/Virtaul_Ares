@@ -875,9 +875,7 @@ function loop() {
       score += 100;
       updateScoreBoard();
       targetMarker = null;
-      ensureMapList().then(() =>
-        loadMapByIndex(currentMapIndex + 1)
-      );
+      nextMap();
       return;
     }
   }
@@ -1195,10 +1193,11 @@ function autoFollowCar(margin = 50) {
 
 findCarBtn.addEventListener('click', () => centerOnCar(500));
 if (restartBtn) restartBtn.addEventListener('click', resetMap);
-if (nextMapBtn)
-  nextMapBtn.addEventListener('click', () =>
-    ensureMapList().then(() => loadMapByIndex(currentMapIndex + 1))
-  );
+function nextMap() {
+  ensureMapList().then(() => loadMapByIndex(currentMapIndex + 1));
+}
+
+if (nextMapBtn) nextMapBtn.addEventListener('click', nextMap);
 if (speedSlider) {
   speedSlider.addEventListener('input', () => {
     const val = parseFloat(speedSlider.value);
