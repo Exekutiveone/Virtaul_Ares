@@ -6,16 +6,12 @@ import { Waypoint } from './map/Waypoint.js';
 import { generateBorder } from './map/mapGenerator.js';
 import * as db from './map/db.js';
 import { pollControl, sendTelemetry } from './api/telemetry.js';
+import {
+  pushMap,
+  fetchCsvMapList,
+  overwriteCsvMap,
+} from './api/maps.js';
 import { loadSequences, runSequence, getFormatFromFile } from './sequences/runner.js';
-
-function pushMapToServer(gameMap, name = 'map') {
-  const data = gameMap.toJSON ? gameMap.toJSON() : gameMap;
-  fetch('/api/maps', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, map: data }),
-  }).catch((err) => console.error('pushMapToServer failed', err));
-}
 
 // 1 Pixel entspricht dieser Anzahl Zentimeter
 const CM_PER_PX = 2;
@@ -90,9 +86,7 @@ const editorMode = params.has('editor');
 
 async function initMapList() {
   try {
-    const res = await fetch('/api/csv-maps');
-    if (!res.ok) return;
-    mapList = await res.json();
+    mapList = await fetchCsvMapList();
     if (csvMapUrl) {
       const file = csvMapUrl.startsWith('/static/maps/')
         ? decodeURIComponent(csvMapUrl.substring('/static/maps/'.length))
@@ -233,7 +227,7 @@ if (csvMapUrl) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
-    pushMapToServer(gameMap, currentCsvFile || 'map');
+    pushMap(gameMap, currentCsvFile || 'map');
   });
 }
 let obstacles = gameMap.obstacles;
@@ -813,7 +807,7 @@ function loadMapFile(e) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
-    pushMapToServer(gameMap, file.name || 'map');
+    pushMap(gameMap, file.name || 'map');
     coverageScore = 0;
     updateScoreBoard();
   });
@@ -833,7 +827,7 @@ function loadMapCsv(e) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
-    pushMapToServer(gameMap, file.name || 'map');
+    pushMap(gameMap, file.name || 'map');
     coverageScore = 0;
     updateScoreBoard();
   });
@@ -856,7 +850,7 @@ function loadMapByIndex(idx) {
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
-    pushMapToServer(gameMap, currentCsvFile || 'map');
+    pushMap(gameMap, currentCsvFile || 'map');
     if (slamMode) {
       slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
       slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
@@ -882,7 +876,7 @@ function resetMap() {
   widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
   heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
   resizeCanvas();
-  pushMapToServer(gameMap, currentCsvFile || 'map');
+  pushMap(gameMap, currentCsvFile || 'map');
   if (slamMode) {
     slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
     slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
@@ -926,11 +920,7 @@ if (editorMode) {
     overwriteCsvBtn.style.display = 'inline-block';
     overwriteCsvBtn.addEventListener('click', () => {
       const csv = db.serializeCsvMap(gameMap);
-      fetch(`/api/csv-maps/${encodeURIComponent(currentCsvFile)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csv }),
-      }).then((res) => {
+      overwriteCsvMap(currentCsvFile, csv).then((res) => {
         if (!res.ok) alert('Fehler beim Speichern');
       });
     });
@@ -960,7 +950,7 @@ if (editorMode) {
     generateBorder(gameMap, respawnTarget);
     originalMapData = gameMap.toJSON();
     updateObstacleOptions();
-    pushMapToServer(gameMap, 'map');
+    pushMap(gameMap, 'map');
   });
 }
 
