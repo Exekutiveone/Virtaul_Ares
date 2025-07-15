@@ -1,3 +1,4 @@
+// ========================= Imports =========================
 import { createCar, carImage } from './car/setup.js';
 import { GameMap } from './map/map.js';
 import { Obstacle } from './map/Obstacle.js';
@@ -13,7 +14,7 @@ import {
 } from './api/maps.js';
 import { loadSequences, runSequence, getFormatFromFile } from './sequences/runner.js';
 
-// 1 Pixel entspricht dieser Anzahl Zentimeter
+// ========================= Konstanten / UI Bindings =========================
 const CM_PER_PX = 2;
 const WAYPOINT_SIZE = 20 / CM_PER_PX;
 const TARGET_SIZE = 20;
@@ -29,10 +30,10 @@ const canvasContainer = document.getElementById('canvasContainer');
 const slamCheckbox = document.getElementById('slamMode');
 const slamCanvas = document.getElementById('slamCanvas');
 const slamCtx = slamCanvas.getContext('2d');
+
 let slamMode = false;
 let prevCarRect = null;
-// Store all hit locations so repeated scans do not remove markers
-const slamHits = [];
+const slamHits = []; // für SLAM Marker
 const saveMapCsvBtn = document.getElementById('saveMapCsv');
 const overwriteCsvBtn = document.getElementById('overwriteMapCsv');
 const connectCornersBtn = document.getElementById('connectCorners');
@@ -43,6 +44,8 @@ const runSequenceBtn = document.getElementById('runSequenceBtn');
 const controlModeSelect = document.getElementById('controlMode');
 const restartBtn = document.getElementById('restartBtn');
 const nextMapBtn = document.getElementById('nextMapBtn');
+
+// ========================= Steuerung & UI States =========================
 let controlMode = controlModeSelect ? controlModeSelect.value : 'wasd';
 let mouseTarget = null;
 const keyMap = {
@@ -51,6 +54,7 @@ const keyMap = {
   s: 'ArrowDown',
   d: 'ArrowRight',
 };
+
 const redEl = document.getElementById('redLength');
 const greenEl = document.getElementById('greenLength');
 const blueLeft1El = document.getElementById('blueLeft1');
@@ -72,9 +76,12 @@ let coverageScore = 0;
 let coverageInterval = null;
 let lastCrash = false;
 
+// ========================= Scoreboard Logic =========================
 function updateScoreBoard() {
   if (scoreEl) scoreEl.textContent = score;
 }
+
+// ========================= Map Handling / Initialisierung =========================
 let mapList = [];
 let currentMapIndex = -1;
 const cellCmInput = document.getElementById('gridCellCm');
@@ -98,9 +105,7 @@ async function initMapList() {
     console.error('initMapList failed', err);
   }
 }
-
 const mapListReady = initMapList();
-
 async function ensureMapList() {
   if (!mapList.length) {
     try {
@@ -111,6 +116,7 @@ async function ensureMapList() {
   }
 }
 
+// ========================= Control Mode Handling =========================
 if (controlModeSelect) {
   controlModeSelect.addEventListener('change', () => {
     controlMode = controlModeSelect.value;
@@ -118,6 +124,7 @@ if (controlModeSelect) {
   });
 }
 
+// ========================= SLAM Mode =========================
 if (slamCheckbox) {
   slamCheckbox.addEventListener('change', () => {
     slamMode = slamCheckbox.checked;
@@ -148,6 +155,7 @@ if (slamCheckbox) {
   });
 }
 
+// ========================= Tastatursteuerung =========================
 window.addEventListener('keydown', (e) => {
   if (controlMode !== 'wasd') return;
   const k = keyMap[e.key.toLowerCase()];
@@ -156,7 +164,6 @@ window.addEventListener('keydown', (e) => {
     car.keys[k] = true;
   }
 });
-
 window.addEventListener('keyup', (e) => {
   if (controlMode !== 'wasd') return;
   const k = keyMap[e.key.toLowerCase()];
@@ -166,6 +173,7 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
+// ========================= Zoom und Panning =========================
 let zoomMode = false;
 let zoomScale = 1;
 let translateX = 0;
@@ -174,28 +182,24 @@ let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
 
-const TELEMETRY_INTERVAL = 500; // ms
+// ========================= Polling-Intervalle =========================
+const TELEMETRY_INTERVAL = 500;
 let lastTelemetry = 0;
+const CONTROL_POLL_INTERVAL = 200;
 
-const CONTROL_POLL_INTERVAL = 200; // ms
-
-
+// ========================= Map- und Canvas-Initialisierung =========================
 let CELL_SIZE = parseFloat(cellCmInput.value) / CM_PER_PX;
 const initialWidthCm = parseFloat(widthCmInput.value);
 const initialHeightCm = parseFloat(heightCmInput.value);
-const initialCols = Math.max(
-  1,
-  Math.round(initialWidthCm / parseFloat(cellCmInput.value)),
-);
-const initialRows = Math.max(
-  1,
-  Math.round(initialHeightCm / parseFloat(cellCmInput.value)),
-);
+const initialCols = Math.max(1, Math.round(initialWidthCm / parseFloat(cellCmInput.value)));
+const initialRows = Math.max(1, Math.round(initialHeightCm / parseFloat(cellCmInput.value)));
 let gameMap = new GameMap(initialCols, initialRows, CELL_SIZE);
 let originalMapData = gameMap.toJSON();
 let previewSize;
 updateObstacleOptions();
 let currentCsvFile = null;
+
+// ========================= Editor/Viewer Logik =========================
 if (!editorMode) {
   const e1 = document.getElementById('editorTools');
   const e2 = document.getElementById('editorTools2');
@@ -208,9 +212,7 @@ if (!editorMode) {
 }
 if (csvMapUrl) {
   if (csvMapUrl.startsWith('/static/maps/')) {
-    currentCsvFile = decodeURIComponent(
-      csvMapUrl.substring('/static/maps/'.length),
-    );
+    currentCsvFile = decodeURIComponent(csvMapUrl.substring('/static/maps/'.length));
     const nameInput = document.getElementById('mapName');
     if (nameInput && !nameInput.value) nameInput.value = currentCsvFile;
   }
@@ -230,6 +232,7 @@ if (csvMapUrl) {
     pushMap(gameMap, currentCsvFile || 'map');
   });
 }
+
 let obstacles = gameMap.obstacles;
 let waypoints = gameMap.waypoints || [];
 previewSize =
@@ -245,21 +248,15 @@ let lastPaintY = 0;
 let targetMarker = gameMap.target;
 let cornerPoints = [];
 
+// ========================= Hilfsfunktionen für Corners und Car/Map =========================
 function renumberCornerPoints() {
   cornerPoints.forEach((p, i) => {
     p.id = i + 1;
   });
 }
-
 function refreshCarObjects() {
-  // Only obstacles should block the car. The target is handled
-  // separately so the car can pass through it.
   car.objects = obstacles.slice();
-
-  // Add map boundaries so the car's sensors and collision
-  // detection account for the outer margin. Boundaries are
-  // represented as simple rectangles with an intersectsRect
-  // method so they behave like normal obstacles.
+  // Boundaries hinzufügen
   const width = gameMap.cols * gameMap.cellSize;
   const height = gameMap.rows * gameMap.cellSize;
   const m = gameMap.margin;
@@ -285,7 +282,6 @@ function refreshCarObjects() {
     }
   }
 }
-
 function respawnTarget() {
   const size = targetMarker ? targetMarker.size : TARGET_SIZE;
   for (let i = 0; i < 100; i++) {
@@ -307,6 +303,7 @@ function respawnTarget() {
   }
 }
 
+// ========================= Car Instanzierung =========================
 carImage.onload = () => {
   resizeCanvas();
   updateObstacleOptions();
@@ -324,6 +321,7 @@ const car = createCar(ctx, obstacles, CM_PER_PX);
 car.autopilot = controlMode === 'mouse';
 refreshCarObjects();
 
+// ========================= Map/Obstacle/Canvas Grid UI Updates =========================
 function updateObstacleOptions() {
   if (!typeSelect || !sizeInput) return;
   const size = parseInt(sizeInput.value);
@@ -335,7 +333,6 @@ function updateObstacleOptions() {
         ? WAYPOINT_SIZE
         : parseInt(sizeInput.value) * CELL_SIZE;
 }
-
 function resizeCanvas() {
   canvas.width = gameMap.cols * CELL_SIZE;
   canvas.height = gameMap.rows * CELL_SIZE;
@@ -351,12 +348,12 @@ function resizeCanvas() {
   }
   updateTransform();
 }
-
 function updateTransform() {
   canvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
   slamCanvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
 }
 
+// ========================= Zeichnen/Bearbeiten: Zellen, Linien, Corners =========================
 function paintCell(x, y) {
   if (removeCheckbox.checked) {
     if (
@@ -379,9 +376,8 @@ function paintCell(x, y) {
   }
   refreshCarObjects();
 }
-
 function addLine(a, b, size) {
-  // convert to cell coordinates so the Bresenham algorithm works with integers
+  // Bresenham Algorithmus für Linien auf der Karte
   let x0 = a.x / CELL_SIZE;
   let y0 = a.y / CELL_SIZE;
   const x1 = b.x / CELL_SIZE;
@@ -411,7 +407,6 @@ function addLine(a, b, size) {
     }
   }
 }
-
 function connectCorners() {
   if (cornerPoints.length < 2) return;
   const size = parseInt(sizeInput.value) * CELL_SIZE;
@@ -423,8 +418,10 @@ function connectCorners() {
   refreshCarObjects();
 }
 
+// ========================= Window Resize =========================
 window.addEventListener('resize', resizeCanvas);
 
+// ========================= SLAM Funktionen =========================
 function revealCone(x, y, length, angle, baseWidth) {
   let hit = null;
   slamCtx.save();
@@ -443,7 +440,6 @@ function revealCone(x, y, length, angle, baseWidth) {
   if (hit) slamHits.push(hit);
   drawSlamHits();
 }
-
 function drawSlamHits() {
   slamCtx.save();
   slamCtx.fillStyle = 'red';
@@ -454,7 +450,6 @@ function drawSlamHits() {
   }
   slamCtx.restore();
 }
-
 function revealCar() {
   const bbox = car.getBoundingBox(car.posX, car.posY);
   if (prevCarRect) {
@@ -470,7 +465,6 @@ function revealCar() {
   prevCarRect = bbox;
   drawSlamHits();
 }
-
 function updateSlamCoverage() {
   if (!slamMode || !slamCoverageEl) return;
   const data = slamCtx.getImageData(0, 0, slamCanvas.width, slamCanvas.height).data;
@@ -489,13 +483,14 @@ function updateSlamCoverage() {
   }
 }
 
+// ========================= Vorschau/Preview Update =========================
 function updatePreview() {
   updateObstacleOptions();
 }
-
 typeSelect.addEventListener('change', updatePreview);
 sizeInput.addEventListener('change', updatePreview);
 
+// ========================= Canvas Event Handler (Editier- & Steuerungslogik) =========================
 canvas.addEventListener('mousedown', (e) => {
   if (zoomMode) {
     isPanning = true;
@@ -515,7 +510,6 @@ canvas.addEventListener('mousedown', (e) => {
   lastPaintY = dragY;
   if (typeSelect.value === 'obstacle') paintCell(dragX, dragY);
 });
-
 canvas.addEventListener('mouseup', () => {
   if (zoomMode) {
     isPanning = false;
@@ -552,7 +546,6 @@ canvas.addEventListener('mouseup', () => {
   }
   isDragging = false;
 });
-
 canvas.addEventListener('mousemove', (e) => {
   if (zoomMode && isPanning) {
     translateX = panStartX - e.clientX;
@@ -577,7 +570,6 @@ canvas.addEventListener('mousemove', (e) => {
     lastPaintY = dragY;
   }
 });
-
 canvas.addEventListener('mousemove', (e) => {
   if (controlMode !== 'mouse') return;
   const rect = canvas.getBoundingClientRect();
@@ -588,7 +580,6 @@ canvas.addEventListener('mousemove', (e) => {
     y: (e.clientY - rect.top) * scaleY,
   };
 });
-
 canvas.addEventListener('wheel', (e) => {
   if (!zoomMode) return;
   e.preventDefault();
@@ -597,6 +588,7 @@ canvas.addEventListener('wheel', (e) => {
   updateTransform();
 });
 
+// ========================= Mausbasierte Car-Steuerung =========================
 function updateMouseFollow() {
   if (!mouseTarget) return;
   if (car.pointInHitbox(mouseTarget.x, mouseTarget.y)) {
@@ -610,7 +602,6 @@ function updateMouseFollow() {
   const cx = car.posX + car.imgWidth / 2;
   const cy = car.posY + car.imgHeight / 2;
   const angle = Math.atan2(mouseTarget.y - cy, mouseTarget.x - cx);
-  // Car.rotation describes its back direction, so align the front to the mouse
   let diff = angle - (car.rotation + Math.PI);
   while (diff > Math.PI) diff -= 2 * Math.PI;
   while (diff < -Math.PI) diff += 2 * Math.PI;
@@ -621,7 +612,6 @@ function updateMouseFollow() {
   } else if (dist > 10) {
     car.keys.ArrowUp = true;
   } else {
-    // Stop immediately when close enough to the target
     car.velocity = 0;
     car.angularVelocity = 0;
     car.acceleration = 0;
@@ -629,6 +619,7 @@ function updateMouseFollow() {
   }
 }
 
+// ========================= Grid Rendering =========================
 function drawGrid() {
   ctx.strokeStyle = '#ddd';
   for (let x = 0; x <= canvas.width; x += CELL_SIZE) {
@@ -645,6 +636,7 @@ function drawGrid() {
   }
 }
 
+// ========================= Haupt-Render/Logik-Loop =========================
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (controlMode === 'mouse') updateMouseFollow();
@@ -653,9 +645,7 @@ function loop() {
     o.draw(ctx);
     if (showHitboxes && typeof o.drawHitbox === 'function') o.drawHitbox(ctx);
   }
-  for (const w of waypoints) {
-    w.draw(ctx);
-  }
+  for (const w of waypoints) w.draw(ctx);
   for (const p of cornerPoints) {
     ctx.fillStyle = 'red';
     ctx.fillRect(p.x, p.y, previewSize, previewSize);
@@ -667,9 +657,9 @@ function loop() {
       ctx.fillText(`P${p.id}`, p.x + previewSize / 2, p.y + previewSize / 2);
     }
   }
-  if (targetMarker) {
-    targetMarker.draw(ctx);
-  }
+  if (targetMarker) targetMarker.draw(ctx);
+
+  // Draw preview while dragging
   if (
     isDragging &&
     typeSelect.value === 'obstacle' &&
@@ -679,8 +669,11 @@ function loop() {
     ctx.lineWidth = 2;
     ctx.strokeRect(dragX, dragY, previewSize, previewSize);
   }
+
   car.showHitbox = showHitboxes;
   car.update(canvas.width, canvas.height);
+
+  // Score Logic on Crash
   if (car.crashed && !lastCrash) {
     score -= 10;
     updateScoreBoard();
@@ -688,7 +681,10 @@ function loop() {
   } else if (!car.crashed) {
     lastCrash = false;
   }
+
   autoFollowCar();
+
+  // Ziel/Target Treffer
   const bboxCurrent = car.getBoundingBox(car.posX, car.posY);
   if (targetMarker) {
     if (
@@ -706,6 +702,8 @@ function loop() {
       return;
     }
   }
+
+  // Waypoint Treffer
   for (const wp of waypoints) {
     if (
       wp.active &&
@@ -722,6 +720,7 @@ function loop() {
     }
   }
 
+  // Sensorwerte/Visualisierung
   redEl.textContent = Math.round(car.redConeLength);
   greenEl.textContent = Math.round(car.greenConeLength);
   const bl1 = car.drawKegel(65, 7, 150, -Math.PI / 2, 'blue', 8);
@@ -729,6 +728,7 @@ function loop() {
   const br1 = car.drawKegel(91, 7, 150, -Math.PI / 2, 'blue', 8);
   const br2 = car.drawKegel(97, 7, 150, -Math.PI / 2, 'blue', 8);
   const bb = car.drawKegel(143, 37, 150, 0, 'blue', 8);
+
   if (slamMode) {
     revealCar();
     revealCone(18, 40, 700, Math.PI, 6);
@@ -750,6 +750,8 @@ function loop() {
     revealCone(143, 37, 150, 0, 8);
     revealCone(143, 43, 150, 0, 8);
   }
+
+  // Sensor-Logik (Aktualisieren für Steuerung)
   car.frontDistance = car.redConeLength;
   car.leftDistance = Math.min(bl1, bl2);
   car.rightDistance = Math.min(br1, br2);
@@ -759,18 +761,23 @@ function loop() {
   blueRight1El.textContent = Math.round(br1);
   blueRight2El.textContent = Math.round(br2);
   blueBackEl.textContent = Math.round(bb);
+
+  // Crash Button Visualisierung
   const crashBtn = document.getElementById('crashIndicator');
   if (car.frontDistance <= 1) {
     crashBtn.style.display = 'inline-block';
   } else {
     crashBtn.style.display = 'none';
   }
+
+  // Datenanzeige: Geschwindigkeit, RPM, Gyro, Position
   speedEl.textContent = Math.round(car.speed);
   rpmEl.textContent = Math.round(car.rpm);
   gyroEl.textContent = car.gyro.toFixed(1);
   if (posXEl) posXEl.textContent = Math.round(car.posX);
   if (posYEl) posYEl.textContent = Math.round(car.posY);
 
+  // Telemetrie Senden
   const now = Date.now();
   if (now - lastTelemetry >= TELEMETRY_INTERVAL) {
     const front = Math.round(car.redConeLength);
@@ -784,6 +791,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+// ========================= Map-Handling (Datei, CSV, Index, Reset) =========================
 function loadMapFile(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -803,7 +811,6 @@ function loadMapFile(e) {
     updateScoreBoard();
   });
 }
-
 function loadMapCsv(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -823,7 +830,6 @@ function loadMapCsv(e) {
     updateScoreBoard();
   });
 }
-
 function loadMapByIndex(idx) {
   if (!mapList.length) return;
   currentMapIndex = (idx + mapList.length) % mapList.length;
@@ -855,7 +861,6 @@ function loadMapByIndex(idx) {
     updateScoreBoard();
   });
 }
-
 function resetMap() {
   if (!originalMapData) return;
   gameMap = GameMap.fromJSON(originalMapData);
@@ -881,6 +886,7 @@ function resetMap() {
   updateScoreBoard();
 }
 
+// ========================= Editor-Only Funktionen/Buttons =========================
 if (editorMode) {
   if (connectCornersBtn)
     connectCornersBtn.addEventListener('click', connectCorners);
@@ -945,7 +951,7 @@ if (editorMode) {
   });
 }
 
-
+// ========================= UI Buttons & Sliders =========================
 toggleHitboxesBtn.addEventListener('click', () => {
   showHitboxes = !showHitboxes;
   car.showHitbox = showHitboxes;
@@ -953,7 +959,6 @@ toggleHitboxesBtn.addEventListener('click', () => {
     ? 'Hitboxen verstecken'
     : 'Hitboxen anzeigen';
 });
-
 function centerOnCar(radiusCm = 500) {
   const diameterPx = (radiusCm * 2) / CM_PER_PX;
   const cw = canvasContainer.clientWidth;
@@ -970,7 +975,6 @@ function centerOnCar(radiusCm = 500) {
   zoomMode = true;
   updateTransform();
 }
-
 function autoFollowCar(margin = 50) {
   const viewW = canvasContainer.clientWidth / zoomScale;
   const viewH = canvasContainer.clientHeight / zoomScale;
@@ -1013,13 +1017,11 @@ function autoFollowCar(margin = 50) {
     updateTransform();
   }
 }
-
 findCarBtn.addEventListener('click', () => centerOnCar(500));
 if (restartBtn) restartBtn.addEventListener('click', resetMap);
 function nextMap() {
   ensureMapList().then(() => loadMapByIndex(currentMapIndex + 1));
 }
-
 if (nextMapBtn) nextMapBtn.addEventListener('click', nextMap);
 if (speedSlider) {
   speedSlider.addEventListener('input', () => {
