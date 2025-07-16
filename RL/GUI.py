@@ -17,6 +17,7 @@ HTML = """
     body {background:#111;color:#eee;font-family:Arial,sans-serif;margin:0;padding:20px;}
     #progress {margin-bottom:20px;}
     #progress progress {width:100%;}
+    .chart-container {margin-bottom: 30px;}
   </style>
   <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
 </head>
@@ -27,9 +28,16 @@ HTML = """
     <progress id='stepProgress' value='0' max='100'></progress>
     <div id='stepText'></div>
   </div>
-  <canvas id='chart' width='800' height='400' style='background:#222;'></canvas>
+  <div class='chart-container'>
+    <h2>Reward per Episode</h2>
+    <canvas id='rewardChart' width='800' height='300' style='background:#222;'></canvas>
+  </div>
+  <div class='chart-container'>
+    <h2>Epsilon per Episode</h2>
+    <canvas id='epsilonChart' width='800' height='300' style='background:#222;'></canvas>
+  </div>
 <script>
-let chart;
+let rewardChart, epsilonChart;
 async function loadData() {
   const res = await fetch('/api/log');
   const data = await res.json();
@@ -41,21 +49,47 @@ async function loadData() {
   const labels = data.episodes.map(e => e.episode);
   const rewards = data.episodes.map(e => e.reward);
   const eps = data.episodes.map(e => e.epsilon);
-  if (!chart) {
-    const ctx = document.getElementById('chart').getContext('2d');
-    chart = new Chart(ctx, {
+  // Reward Chart
+  if (!rewardChart) {
+    const ctx = document.getElementById('rewardChart').getContext('2d');
+    rewardChart = new Chart(ctx, {
       type:'line',
-      data:{labels:labels,datasets:[
-        {label:'Reward',borderColor:'rgb(75,192,192)',data:rewards,fill:false},
-        {label:'Epsilon',borderColor:'rgb(255,99,132)',data:eps,fill:false,yAxisID:'eps'}
-      ]},
-      options:{scales:{eps:{type:'linear',position:'right',min:0,max:1}}}
+      data:{
+        labels:labels,
+        datasets:[{label:'Reward',borderColor:'rgb(75,192,192)',data:rewards,fill:false}]
+      },
+      options:{
+        scales:{
+          x: {title: {display: true, text: 'Episode'}},
+          y: {title: {display: true, text: 'Reward'}}
+        }
+      }
     });
   } else {
-    chart.data.labels = labels;
-    chart.data.datasets[0].data = rewards;
-    chart.data.datasets[1].data = eps;
-    chart.update();
+    rewardChart.data.labels = labels;
+    rewardChart.data.datasets[0].data = rewards;
+    rewardChart.update();
+  }
+  // Epsilon Chart
+  if (!epsilonChart) {
+    const ctx2 = document.getElementById('epsilonChart').getContext('2d');
+    epsilonChart = new Chart(ctx2, {
+      type:'line',
+      data:{
+        labels:labels,
+        datasets:[{label:'Epsilon',borderColor:'rgb(255,99,132)',data:eps,fill:false}]
+      },
+      options:{
+        scales:{
+          x: {title: {display: true, text: 'Episode'}},
+          y: {title: {display: true, text: 'Epsilon'}, min: 0, max: 1}
+        }
+      }
+    });
+  } else {
+    epsilonChart.data.labels = labels;
+    epsilonChart.data.datasets[0].data = eps;
+    epsilonChart.update();
   }
 }
 loadData();
@@ -64,6 +98,7 @@ setInterval(loadData, 5000);
 </body>
 </html>
 """
+
 
 def parse_log():
     entries = []
@@ -107,4 +142,4 @@ def api_log():
                     'map': MAP_NAME})
 
 if __name__ == '__main__':
-    app.run(port=6000, debug=True)
+    app.run(port=7000, debug=True)

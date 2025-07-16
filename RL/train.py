@@ -27,10 +27,19 @@ if __name__ == '__main__':
     for ep in range(NUM_EPISODES):
         state = env.reset()
         total = 0
+        termination_reason = "Max. Schritte"
         for st in range(MAX_STEPS):
             a = agent.act(np.array(state))
             env.send_action(a)
             s2 = env.get_state()
+            # Capture termination flags before they might be reset by
+            # ``compute_reward`` so the reason can be reported accurately.
+            # Values may be provided by the RemoteEnv HTTP API
+            map_switched = getattr(env, "map_switched", getattr(env, "goal_reached", False))
+            crashed = getattr(env, "crashed", False)
+            coverage_done = getattr(env, "coverage_done", False)
+            stalled = getattr(env, "stalled", False)
+            battery = getattr(env, "battery", 1.0)
             r = env.compute_reward(state, s2)
             done = env.done
             agent.remember(state, a, r, s2, done)
@@ -38,12 +47,25 @@ if __name__ == '__main__':
             state = s2
             total += r
             if done:
+                if battery <= 0:
+                    termination_reason = "Batterie leer"
+                elif map_switched:
+                    termination_reason = "Ziel erreicht"
+                elif crashed:
+                    termination_reason = "Crash"
+                elif coverage_done:
+                    termination_reason = "95% Abdeckung"
+                elif stalled:
+                    termination_reason = "Stall"
+                else:
+                    termination_reason = "Unbekannt"
                 break
         agent.replay()
         logger.flush()
         agent.save(str(MODEL_FILE))
         map_name = getattr(env, "get_map_name", lambda: "unknown")()
         print(
-            f"Episode {ep} finished after {st + 1} steps with reward {total:.2f} on map {map_name}"
+            f"Episode {ep} finished after {st + 1} steps with reward {total:.2f} "
+            f"on map {map_name} ({termination_reason})"
         )
     logger.close()
