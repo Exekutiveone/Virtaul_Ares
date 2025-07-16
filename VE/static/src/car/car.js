@@ -92,6 +92,10 @@ export class Car {
     this.steerRate = 0.015;
     this.wheelBase = 50;
     this.angleOverride = false;
+
+    // Second camera cone angle in radians
+    this.camera2Angle = 0;
+    this.greenCone2Length = 0;
   }
 
   reset() {
@@ -140,6 +144,13 @@ export class Car {
     if (action === 'straight') {
       this.angleOverride = false;
       this.steeringAngle = 0;
+      return;
+    }
+    if (action === 'camera2') {
+      if (typeof value === 'number') {
+        const deg = Math.max(-90, Math.min(90, value));
+        this.camera2Angle = (deg * Math.PI) / 180;
+      }
       return;
     }
     const key = this.actionMap[action];
@@ -445,6 +456,14 @@ export class Car {
 
     this.redConeLength = this.drawKegel(18, 40, 700, Math.PI, 'red', 6);
     this.greenConeLength = this.drawKegel(45, 40, 400, Math.PI, 'green', 140);
+    this.greenCone2Length = this.drawKegel(
+      45,
+      40,
+      400,
+      Math.PI + this.camera2Angle,
+      'green',
+      140,
+    );
     const bluePoints = [
       [65, 7],
       [72, 7],
