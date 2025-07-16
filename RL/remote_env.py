@@ -8,6 +8,7 @@ class RemoteEnv:
         self.state = None
         self.done = False
         self._last_reward = 0.0
+        self.map_name = "test"
 
     def reset(self):
         res = requests.post(f"{self.base_url}/reset")
@@ -29,3 +30,6 @@ class RemoteEnv:
 
     def compute_reward(self, _s, _s2):
         return self._last_reward
+
+    def get_map_name(self):
+        return self.map_name

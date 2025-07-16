@@ -27,6 +27,7 @@ class ServerEnv:
         self.last_move_time = time.time()
         self.battery = 1.0
         self.last_state_time = time.time()
+        self.map_name = "unknown"
 
     def reset(self):
         """Restart the simulator and return the initial state."""
@@ -38,6 +39,8 @@ class ServerEnv:
         self.last_move_time = time.time()
         self.battery = 1.0
         self.last_state_time = time.time()
+        # Update the current map name before restarting
+        self._update_map_name()
         try:
             # Trigger a restart of the simulator which resets the car to the
             # starting position. The front-end listens for this control command
@@ -117,6 +120,20 @@ class ServerEnv:
         if coverage >= 0.95:
             self.done = True
         return [front, left, right, speed, gyro, rpm, coverage, self.battery]
+
+    def _update_map_name(self):
+        """Retrieve the name of the currently loaded map from the server."""
+        try:
+            res = requests.get(f"{self.base_url}/api/maps", timeout=5)
+            maps = res.json()
+            if maps:
+                self.map_name = maps[-1].get("name", self.map_name)
+        except Exception:
+            pass
+
+    def get_map_name(self):
+        """Return the most recently reported map name."""
+        return self.map_name
 
     def send_action(self, idx):
         """Send a driving and camera command for the chosen action index."""

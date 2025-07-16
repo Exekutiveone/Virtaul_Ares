@@ -42,5 +42,8 @@ if __name__ == '__main__':
         agent.replay()
         logger.flush()
         agent.save(str(MODEL_FILE))
-        print(f"Episode {ep} finished after {st + 1} steps with reward {total:.2f}")
+        map_name = getattr(env, "get_map_name", lambda: "unknown")()
+        print(
+            f"Episode {ep} finished after {st + 1} steps with reward {total:.2f} on map {map_name}"
+        )
     logger.close()

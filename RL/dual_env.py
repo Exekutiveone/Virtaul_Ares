@@ -19,6 +19,7 @@ class DualEnv:
         self.train_env = RemoteEnv(train_url)
         self.display_env = ServerEnv(base_url)
         self.done = False
+        self.map_name = "unknown"
 
     def reset(self):
         state = self.train_env.reset()
@@ -42,3 +43,11 @@ class DualEnv:
 
     def compute_reward(self, s, s2):
         return self.train_env.compute_reward(s, s2)
+
+    def get_map_name(self):
+        """Return the name of the current map if available."""
+        try:
+            self.map_name = self.display_env.get_map_name()
+        except Exception:
+            pass
+        return self.map_name
