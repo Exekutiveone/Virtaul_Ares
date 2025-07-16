@@ -6,7 +6,7 @@ from utils import ACTIONS
 
 ENV_CHOICE = input("Select environment - [V]irtual or [T]est: ").strip().lower()
 if ENV_CHOICE == "t":
-    from TE import SimEnv as Env
+    from remote_env import RemoteEnv as Env
     env = Env()
 else:
     from environment import ServerEnv as Env

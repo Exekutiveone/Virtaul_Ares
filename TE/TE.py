@@ -391,10 +391,39 @@ class SimEnv(Environment):
 
 
 # === Simple manual test ====================================================
+# === HTTP interface ========================================================
 if __name__ == "__main__":
-    env = SimEnv()
-    print("Initial:", env.get_state())
-    for i in range(10):
-        env.send_action(0)  # forward
-        print(f"Step {i + 1}:", env.get_state())
+    from flask import Flask, request, jsonify
+
+    app = Flask(__name__)
+
+    ENV = SimEnv()
+    PREV_STATE = ENV.reset()
+
+    @app.post("/reset")
+    def reset():
+        """Reset the simulation and return the initial state."""
+        global PREV_STATE
+        PREV_STATE = ENV.reset()
+        return jsonify(state=PREV_STATE, reward=0.0, done=ENV.done)
+
+    @app.post("/step")
+    def step():
+        """Apply an action index and advance the simulation."""
+        global PREV_STATE
+        idx = int(request.json.get("action", 0))
+        print(f"Action received: {ACTIONS[idx]}")
+        ENV.send_action(idx)
+        new_state = ENV.get_state()
+        reward = ENV.compute_reward(PREV_STATE, new_state)
+        PREV_STATE = new_state
+        return jsonify(state=new_state, reward=reward, done=ENV.done)
+
+    @app.get("/state")
+    def state():
+        """Return the current state without modifying the environment."""
+        return jsonify(state=ENV.get_state(), done=ENV.done)
+
+    print("Test environment server running on http://127.0.0.1:6000")
+    app.run(port=6000)
 
