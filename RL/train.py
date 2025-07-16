@@ -33,6 +33,8 @@ if __name__ == '__main__':
             env.send_action(a)
             s2 = env.get_state()
             map_switched = getattr(env, "map_switched", False)
+            crashed = getattr(env, "crashed", False)
+            coverage_done = getattr(env, "coverage_done", False)
             battery = getattr(env, "battery", 1.0)
             r = env.compute_reward(state, s2)
             done = env.done
@@ -45,6 +47,10 @@ if __name__ == '__main__':
                     termination_reason = "Batterie leer"
                 elif map_switched:
                     termination_reason = "Ziel erreicht"
+                elif crashed:
+                    termination_reason = "Crash"
+                elif coverage_done:
+                    termination_reason = "95% Abdeckung"
                 else:
                     termination_reason = "Beendet"
                 break
