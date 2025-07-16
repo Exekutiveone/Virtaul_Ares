@@ -3,7 +3,6 @@ import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
 import { Waypoint } from './Waypoint.js';
 
-const TARGET_SIZE = 10; // same size as waypoint
 
 export function parseCsvMap(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -21,7 +20,7 @@ export function parseCsvMap(text) {
       gm.target = new Target(
         parseFloat(parts[1]),
         parseFloat(parts[2]),
-        TARGET_SIZE,
+        parts[3] ? parseFloat(parts[3]) : 10,
       );
     } else if (parts[0] === 'waypoint') {
       gm.waypoints.push(

@@ -2,7 +2,7 @@ import { Obstacle } from './Obstacle.js';
 import { Target } from './Target.js';
 import { Waypoint } from './Waypoint.js';
 
-const TARGET_SIZE = 10; // match waypoint size
+const DEFAULT_TARGET_SIZE = 10; // match waypoint size
 
 export class GameMap {
   constructor(cols, rows, cellSize = 40, margin = 0) {
@@ -82,7 +82,13 @@ export class GameMap {
       gm.obstacles = obj.obstacles.map((o) => new Obstacle(o.x, o.y, o.size));
     }
     gm.target = obj.target
-      ? new Target(obj.target.x, obj.target.y, TARGET_SIZE)
+      ? new Target(
+          obj.target.x,
+          obj.target.y,
+          typeof obj.target.size === 'number'
+            ? obj.target.size
+            : DEFAULT_TARGET_SIZE,
+        )
       : null;
     if (obj.waypoints) {
       gm.waypoints = obj.waypoints.map((w) => new Waypoint(w.x, w.y, w.size));
