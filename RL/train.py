@@ -27,10 +27,13 @@ if __name__ == '__main__':
     for ep in range(NUM_EPISODES):
         state = env.reset()
         total = 0
+        termination_reason = "Max. Schritte"
         for st in range(MAX_STEPS):
             a = agent.act(np.array(state))
             env.send_action(a)
             s2 = env.get_state()
+            map_switched = getattr(env, "map_switched", False)
+            battery = getattr(env, "battery", 1.0)
             r = env.compute_reward(state, s2)
             done = env.done
             agent.remember(state, a, r, s2, done)
@@ -38,12 +41,19 @@ if __name__ == '__main__':
             state = s2
             total += r
             if done:
+                if battery <= 0:
+                    termination_reason = "Batterie leer"
+                elif map_switched:
+                    termination_reason = "Ziel erreicht"
+                else:
+                    termination_reason = "Beendet"
                 break
         agent.replay()
         logger.flush()
         agent.save(str(MODEL_FILE))
         map_name = getattr(env, "get_map_name", lambda: "unknown")()
         print(
-            f"Episode {ep} finished after {st + 1} steps with reward {total:.2f} on map {map_name}"
+            f"Episode {ep} finished after {st + 1} steps with reward {total:.2f} "
+            f"on map {map_name} ({termination_reason})"
         )
     logger.close()
