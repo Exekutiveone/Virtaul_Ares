@@ -22,6 +22,7 @@ export function sendTelemetry(car, front, rear, left, right) {
       pos_x: car.posX,
       pos_y: car.posY,
       distances: { front, rear, left, right },
+      battery: car.battery,
     }),
   }).catch((err) => console.error('sendTelemetry failed', err));
 }
