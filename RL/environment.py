@@ -12,11 +12,27 @@ class ServerEnv:
         self.last_move_time = time.time()
 
     def reset(self):
+        """Restart the simulator and return the initial state."""
         self.done = False
         self.night_mode = False
         self.map_switched = False
         self.stalled = False
         self.last_move_time = time.time()
+        try:
+            # Trigger a restart of the simulator which resets the car to the
+            # starting position. The front-end listens for this control command
+            # and reloads the current scenario.
+            requests.post(
+                f"{self.base_url}/api/control",
+                json={"action": "restart"},
+                timeout=5,
+            )
+        except Exception:
+            # If the restart request fails we still continue with a clean state
+            pass
+        # Give the client a moment to process the restart before requesting the
+        # first observation.
+        time.sleep(0.1)
         return self.get_state()
 
     def get_state(self):
@@ -40,6 +56,7 @@ class ServerEnv:
             except Exception:
                 pass
             self.stalled = True
+            self.done = True
             return [front, left, right, 0, gyro, rpm, 0.0]
         try:
             slam_res = requests.get(f"{self.base_url}/api/slam-map", timeout=5)
@@ -49,6 +66,13 @@ class ServerEnv:
             coverage = known / total if total else 0.0
         except Exception:
             coverage = 0.0
+        # Mark the episode as finished if the target was reached or a crash
+        # occurred. As we do not get explicit signals from the simulator we use
+        # simple heuristics based on the sensor values.
+        if front <= 1:
+            self.done = True
+        if coverage >= 0.95:
+            self.done = True
         return [front, left, right, speed, gyro, rpm, coverage]
 
     def send_action(self, idx):
@@ -63,6 +87,7 @@ class ServerEnv:
     def compute_reward(self, s, s2):
         if self.stalled:
             self.stalled = False
+            self.done = True
             return -10
         cov_gain = s2[6] - s[6]
         reward = -5 if s2[0] < 20 else s[0] - s2[0]
