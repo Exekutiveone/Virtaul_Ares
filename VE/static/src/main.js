@@ -111,6 +111,9 @@ async function initMapList() {
   }
 }
 
+// Immediately start loading the list of available maps.
+const mapListReady = initMapList();
+
 
 
 window.addEventListener('keydown', (e) => {
@@ -913,7 +916,9 @@ function autoFollowCar(margin = 50) {
 findCarBtn.addEventListener('click', () => centerOnCar(500));
 if (restartBtn) restartBtn.addEventListener('click', resetMap);
 function nextMap() {
-  ensureMapList().then(() => loadMapByIndex(currentMapIndex + 1));
+  ensureMapList(mapList, mapListReady).then(() =>
+    loadMapByIndex(currentMapIndex + 1),
+  );
 }
 
 if (nextMapBtn) nextMapBtn.addEventListener('click', nextMap);
