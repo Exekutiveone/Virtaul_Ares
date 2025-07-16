@@ -592,8 +592,10 @@ export class Car {
       bbox.y + bbox.h <= canvasHeight - this.margin;
 
     if (inBounds) {
-      const hit = this.objects.some((obs) =>
-        obs.intersectsRect(bbox.x, bbox.y, bbox.w, bbox.h),
+      const hit = this.objects.some(
+        (obs) =>
+          obs.blocking !== false &&
+          obs.intersectsRect(bbox.x, bbox.y, bbox.w, bbox.h),
       );
       if (!hit) {
         this.posX = nx;

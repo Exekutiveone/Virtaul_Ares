@@ -3,6 +3,7 @@ export class Target {
     this.x = x;
     this.y = y;
     this.size = size;
+    this.blocking = false;
   }
 
   draw(ctx) {
