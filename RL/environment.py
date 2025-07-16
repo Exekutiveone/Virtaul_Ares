@@ -99,8 +99,14 @@ class ServerEnv:
             cells = slam_res.json().get("cells", [])
             non_obstacle = [val for row in cells for val in row if val != 2]
             total = len(non_obstacle)
-            known = sum(1 for val in non_obstacle if val != 0)
-            coverage = known / total if total else 0.0
+            if total and all(val != 0 for val in non_obstacle):
+                # The virtual environment returns the static grid when no
+                # SLAM map is available. Treat this case as 0% coverage so the
+                # agent does not immediately terminate an episode.
+                coverage = 0.0
+            else:
+                known = sum(1 for val in non_obstacle if val != 0)
+                coverage = known / total if total else 0.0
         except Exception:
             coverage = 0.0
         try:
