@@ -12,7 +12,8 @@ COLLISION_PENALTY = -20
 NEAR_PENALTY = -5
 GOAL_REWARD = 150
 WAYPOINT_REWARD = 15
-BATTERY_RATE = 0.00002        # battery drain per rpm-second
+# Battery drain per rpm-second (reduced for longer runtime)
+BATTERY_RATE = 0.000005
 BATTERY_PENALTY = -50         # punishment when battery depleted before goal
 
 class ServerEnv:

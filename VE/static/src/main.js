@@ -93,6 +93,7 @@ let score = 0;
 let coverageScore = 0;
 let coverageInterval = null;
 let lastCrash = false;
+let batteryDepleted = false;
 
 function updateScoreBoard() {
   if (scoreEl) scoreEl.textContent = score;
@@ -747,6 +748,11 @@ function loop() {
   if (posXEl) posXEl.textContent = Math.round(car.posX);
   if (posYEl) posYEl.textContent = Math.round(car.posY);
 
+  if (car.battery <= 0 && !batteryDepleted) {
+    batteryDepleted = true;
+    nextMap();
+  }
+
   const now = Date.now();
   if (now - lastTelemetry >= TELEMETRY_INTERVAL) {
     const front = Math.round(car.redConeLength);
@@ -836,6 +842,7 @@ function loadMapByIndex(idx) {
       updateSlamCoverage();
     }
     car.reset();
+    batteryDepleted = false;
     coverageScore = 0;
     updateScoreBoard();
   });
@@ -865,6 +872,7 @@ function resetMap() {
     updateSlamCoverage();
   }
   car.reset();
+  batteryDepleted = false;
   coverageScore = 0;
   updateScoreBoard();
 }

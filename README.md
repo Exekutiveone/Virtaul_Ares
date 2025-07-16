@@ -22,9 +22,12 @@ API output can be found at `http://127.0.0.1:5000/status`.
 ## Battery model
 
 Each episode starts with a full battery. During simulation the battery level
-decreases proportionally to the car's RPM and the elapsed time. The current
-battery percentage is included in the RL state. If it reaches 0&nbsp;% before the
-goal is achieved the agent receives an additional penalty and the episode ends.
+decreases proportionally to the car's RPM and the elapsed time. The drain rate
+was reduced so the battery lasts roughly four times longer. When the level
+drops to 0&nbsp;% the vehicle can no longer move and the next map is loaded
+automatically. The battery percentage is included in the RL state and if
+depletion happens before the goal is achieved the agent receives an additional
+penalty and the episode ends.
 
 ## Saving and loading maps
 
