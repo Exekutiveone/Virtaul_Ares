@@ -60,6 +60,14 @@ if __name__ == '__main__':
                 else:
                     termination_reason = "Unbekannt"
                 break
+        # Restart the map after early termination so the next episode begins
+        # with a clean SLAM map and full battery.  Only keep the current map
+        # when coverage finished the episode.
+        if termination_reason != "95% Abdeckung":
+            try:
+                env.reset()
+            except Exception:
+                pass
         agent.replay()
         logger.flush()
         agent.save(str(MODEL_FILE))
