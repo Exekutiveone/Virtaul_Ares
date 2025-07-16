@@ -2,6 +2,7 @@ import numpy as np
 from config import BASE_URL, NUM_EPISODES, MAX_STEPS
 from agent import DQNAgent
 from logger import Logger
+from pathlib import Path
 from utils import ACTIONS
 
 ENV_CHOICE = input("Select environment - [V]irtual or [T]est: ").strip().lower()
@@ -14,7 +15,8 @@ else:
 
 if __name__ == '__main__':
     agent = DQNAgent()
-    logger = Logger("rl_log.csv")
+    log_path = Path(__file__).with_name("rl_log.csv")
+    logger = Logger(str(log_path))
     for ep in range(NUM_EPISODES):
         state = env.reset()
         total = 0
@@ -32,4 +34,5 @@ if __name__ == '__main__':
                 break
         agent.replay()
         logger.flush()
+        print(f"Episode {ep} finished after {st + 1} steps with reward {total:.2f}")
     logger.close()
