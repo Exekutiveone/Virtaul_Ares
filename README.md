@@ -19,7 +19,9 @@ following services:
 The map editor is available at `http://127.0.0.1:5000/map2`. A simple view of the
 API output can be found at `http://127.0.0.1:5000/status`.
 Training progress of the RL agent can be monitored at
-`http://127.0.0.1:5000/rl-progress`.
+`http://127.0.0.1:5000/rl-progress`. The chart on this page now refreshes
+automatically so you can watch rewards and epsilon values update during
+training.
 
 ## Battery model
 

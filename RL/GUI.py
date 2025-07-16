@@ -38,6 +38,7 @@ HTML = """
     <tbody></tbody>
   </table>
 <script>
+let chart;
 async function loadData() {
   const res = await fetch('/api/log');
   const data = await res.json();
@@ -55,20 +56,28 @@ async function loadData() {
                    `<td>${row.epsilon.toFixed(3)}</td>`;
     tbody.appendChild(tr);
   }
-  const ctx = document.getElementById('chart').getContext('2d');
   const labels = data.episodes.map(e => e.episode);
   const rewards = data.episodes.map(e => e.reward);
   const eps = data.episodes.map(e => e.epsilon);
-  new Chart(ctx, {
-    type:'line',
-    data:{labels:labels,datasets:[
-      {label:'Reward',borderColor:'rgb(75,192,192)',data:rewards,fill:false},
-      {label:'Epsilon',borderColor:'rgb(255,99,132)',data:eps,fill:false,yAxisID:'eps'}
-    ]},
-    options:{scales:{eps:{type:'linear',position:'right',min:0,max:1}}}
-  });
+  if (!chart) {
+    const ctx = document.getElementById('chart').getContext('2d');
+    chart = new Chart(ctx, {
+      type:'line',
+      data:{labels:labels,datasets:[
+        {label:'Reward',borderColor:'rgb(75,192,192)',data:rewards,fill:false},
+        {label:'Epsilon',borderColor:'rgb(255,99,132)',data:eps,fill:false,yAxisID:'eps'}
+      ]},
+      options:{scales:{eps:{type:'linear',position:'right',min:0,max:1}}}
+    });
+  } else {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = rewards;
+    chart.data.datasets[1].data = eps;
+    chart.update();
+  }
 }
 loadData();
+setInterval(loadData, 5000);
 </script>
 </body>
 </html>
