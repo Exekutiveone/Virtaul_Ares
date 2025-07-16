@@ -445,7 +445,16 @@ canvas.addEventListener('mousedown', (e) => {
   isDragging = true;
   lastPaintX = dragX;
   lastPaintY = dragY;
-  if (typeSelect.value === 'obstacle') paintCell(dragX, dragY);
+  if (typeSelect.value === 'obstacle')
+    paintCell(dragX, dragY, {
+      removeChecked: removeCheckbox.checked,
+      targetMarker,
+      previewSize,
+      obstacles,
+      Obstacle,
+      gameMap,
+      refreshCarObjects,
+    });
 });
 
 canvas.addEventListener('mouseup', () => {
@@ -517,7 +526,15 @@ canvas.addEventListener('mousemove', (e) => {
     typeSelect.value === 'obstacle' &&
     (dragX !== lastPaintX || dragY !== lastPaintY)
   ) {
-    paintCell(dragX, dragY);
+    paintCell(dragX, dragY, {
+      removeChecked: removeCheckbox.checked,
+      targetMarker,
+      previewSize,
+      obstacles,
+      Obstacle,
+      gameMap,
+      refreshCarObjects,
+    });
     lastPaintX = dragX;
     lastPaintY = dragY;
   }
@@ -852,7 +869,16 @@ function resetMap() {
 
 if (editorMode) {
   if (connectCornersBtn)
-    connectCornersBtn.addEventListener('click', connectCorners);
+    connectCornersBtn.addEventListener('click', () =>
+      connectCorners({
+        cornerPoints,
+        sizeInput,
+        CELL_SIZE,
+        addLine: (a, b, size) =>
+          addLine(a, b, size, { CELL_SIZE, obstacles, Obstacle }),
+        refreshCarObjects,
+      }),
+    );
 
   document
     .getElementById('saveMap')
