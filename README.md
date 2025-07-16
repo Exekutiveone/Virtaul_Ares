@@ -31,6 +31,26 @@ environment to use:
 - `[B]`oth – train in the test environment while mirroring the actions to
   the virtual simulator for visualisation.
 
+### Test environment API
+
+The test environment exposes `/reset` and `/step` endpoints. Both return
+JSON data with the following structure:
+
+```json
+{
+  "state": [...],
+  "reward": 0.0,
+  "done": false,
+  "goal_reached": false,
+  "crashed": false,
+  "battery": 1.0
+}
+```
+
+`goal_reached` mirrors the `map_switched` flag of the normal simulator and
+indicates that the target was reached. `battery` provides the remaining
+energy level from 0.0 to 1.0.
+
 ### Saving the RL model
 
 The training script automatically stores the neural network under

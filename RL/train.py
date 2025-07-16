@@ -34,7 +34,8 @@ if __name__ == '__main__':
             s2 = env.get_state()
             # Capture termination flags before they might be reset by
             # ``compute_reward`` so the reason can be reported accurately.
-            map_switched = getattr(env, "map_switched", False)
+            # Values may be provided by the RemoteEnv HTTP API
+            map_switched = getattr(env, "map_switched", getattr(env, "goal_reached", False))
             crashed = getattr(env, "crashed", False)
             coverage_done = getattr(env, "coverage_done", False)
             stalled = getattr(env, "stalled", False)

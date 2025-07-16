@@ -422,7 +422,14 @@ if __name__ == "__main__":
         """Reset the simulation and return the initial state."""
         global PREV_STATE
         PREV_STATE = ENV.reset()
-        return jsonify(state=PREV_STATE, reward=0.0, done=ENV.done)
+        return jsonify(
+            state=PREV_STATE,
+            reward=0.0,
+            done=ENV.done,
+            goal_reached=ENV.goal_reached,
+            crashed=ENV.car.crashed,
+            battery=ENV.car.battery,
+        )
 
     @app.post("/step")
     def step():
@@ -434,7 +441,14 @@ if __name__ == "__main__":
         new_state = ENV.get_state()
         reward = ENV.compute_reward(PREV_STATE, new_state)
         PREV_STATE = new_state
-        return jsonify(state=new_state, reward=reward, done=ENV.done)
+        return jsonify(
+            state=new_state,
+            reward=reward,
+            done=ENV.done,
+            goal_reached=ENV.goal_reached,
+            crashed=ENV.car.crashed,
+            battery=ENV.car.battery,
+        )
 
     @app.get("/state")
     def state():
