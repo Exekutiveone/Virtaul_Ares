@@ -34,8 +34,7 @@ function pushMapToServer(gameMap, name = 'map') {
 
 // 1 Pixel entspricht dieser Anzahl Zentimeter
 const CM_PER_PX = 2;
-const WAYPOINT_SIZE = 20 / CM_PER_PX;
-const TARGET_SIZE = WAYPOINT_SIZE;
+const DEFAULT_MARKER_SIZE = 20 / CM_PER_PX;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -199,7 +198,7 @@ if (csvMapUrl) {
     targetMarker = gameMap.target;
     if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
     if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
-    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
+    spawnMarker = new SpawnPoint(car.startX, car.startY, DEFAULT_MARKER_SIZE);
     waypoints = gameMap.waypoints || [];
     cellCmInput.value = Math.round(gameMap.cellSize * CM_PER_PX);
     updateObstacleOptions();
@@ -212,10 +211,7 @@ if (csvMapUrl) {
 }
 let obstacles = gameMap.obstacles;
 let waypoints = gameMap.waypoints || [];
-previewSize =
-  typeSelect.value === 'target'
-    ? CELL_SIZE
-    : parseInt(sizeInput.value) * CELL_SIZE;
+previewSize = parseInt(sizeInput.value) * CELL_SIZE;
 let showHitboxes = false;
 let isDragging = false;
 let dragX = 0;
@@ -268,7 +264,7 @@ function refreshCarObjects() {
 }
 
 function respawnTarget() {
-  const size = TARGET_SIZE;
+  const size = gameMap.target ? gameMap.target.size : DEFAULT_MARKER_SIZE;
   for (let i = 0; i < 100; i++) {
     const col = Math.floor(Math.random() * gameMap.cols);
     const row = Math.floor(Math.random() * gameMap.rows);
@@ -312,17 +308,14 @@ const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
   hitboxHeight: HOTBOX_HEIGHT_CM / CM_PER_PX,
 });
 car.autopilot = controlMode === 'mouse';
-spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
+spawnMarker = new SpawnPoint(car.startX, car.startY, DEFAULT_MARKER_SIZE);
 refreshCarObjects();
 
 function updateObstacleOptions() {
   if (!typeSelect || !sizeInput) return;
   const size = parseInt(sizeInput.value);
   sizeInput.value = isNaN(size) ? 1 : Math.max(1, Math.min(25, size));
-  previewSize =
-    typeSelect.value === 'target' || typeSelect.value === 'waypoint'
-      ? WAYPOINT_SIZE
-      : parseInt(sizeInput.value) * CELL_SIZE;
+  previewSize = parseInt(sizeInput.value) * CELL_SIZE;
 }
 
 function resizeCanvas() {
@@ -467,7 +460,7 @@ canvas.addEventListener('mouseup', () => {
       const idx = waypoints.findIndex((w) => w.x === dragX && w.y === dragY);
       if (idx !== -1) waypoints.splice(idx, 1);
     } else if (!waypoints.some((w) => w.x === dragX && w.y === dragY)) {
-      waypoints.push(new Waypoint(dragX, dragY, WAYPOINT_SIZE));
+      waypoints.push(new Waypoint(dragX, dragY, previewSize));
     }
     gameMap.waypoints = waypoints;
   } else if (selected === 'start') {
@@ -476,7 +469,7 @@ canvas.addEventListener('mouseup', () => {
       gameMap.startX = undefined;
       gameMap.startY = undefined;
     } else {
-      spawnMarker = new SpawnPoint(dragX, dragY, WAYPOINT_SIZE);
+      spawnMarker = new SpawnPoint(dragX, dragY, DEFAULT_MARKER_SIZE);
       gameMap.startX = dragX;
       gameMap.startY = dragY;
       car.startX = dragX;
@@ -753,7 +746,7 @@ function loadMapFile(e) {
     targetMarker = gameMap.target;
     if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
     if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
-    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
+    spawnMarker = new SpawnPoint(car.startX, car.startY, DEFAULT_MARKER_SIZE);
     waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
@@ -776,7 +769,7 @@ function loadMapCsv(e) {
     targetMarker = gameMap.target;
     if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
     if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
-    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
+    spawnMarker = new SpawnPoint(car.startX, car.startY, DEFAULT_MARKER_SIZE);
     waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
@@ -802,7 +795,7 @@ function loadMapByIndex(idx) {
     targetMarker = gameMap.target;
     if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
     if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
-    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
+    spawnMarker = new SpawnPoint(car.startX, car.startY, DEFAULT_MARKER_SIZE);
     waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
@@ -831,7 +824,7 @@ function resetMap() {
   targetMarker = gameMap.target;
   if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
   if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
-  spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
+  spawnMarker = new SpawnPoint(car.startX, car.startY, DEFAULT_MARKER_SIZE);
   waypoints = gameMap.waypoints || [];
   refreshCarObjects();
   widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
