@@ -32,9 +32,12 @@ if __name__ == '__main__':
             a = agent.act(np.array(state))
             env.send_action(a)
             s2 = env.get_state()
+            # Capture termination flags before they might be reset by
+            # ``compute_reward`` so the reason can be reported accurately.
             map_switched = getattr(env, "map_switched", False)
             crashed = getattr(env, "crashed", False)
             coverage_done = getattr(env, "coverage_done", False)
+            stalled = getattr(env, "stalled", False)
             battery = getattr(env, "battery", 1.0)
             r = env.compute_reward(state, s2)
             done = env.done
@@ -51,8 +54,10 @@ if __name__ == '__main__':
                     termination_reason = "Crash"
                 elif coverage_done:
                     termination_reason = "95% Abdeckung"
+                elif stalled:
+                    termination_reason = "Stall"
                 else:
-                    termination_reason = "Beendet"
+                    termination_reason = "Unbekannt"
                 break
         agent.replay()
         logger.flush()
