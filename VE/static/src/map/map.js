@@ -13,6 +13,8 @@ export class GameMap {
     this.obstacles = [];
     this.target = null;
     this.waypoints = [];
+    this.startX = 0;
+    this.startY = 0;
   }
 
   get width() {
@@ -62,6 +64,8 @@ export class GameMap {
       rows: this.rows,
       cellSize: this.cellSize,
       margin: this.margin,
+      startX: this.startX,
+      startY: this.startY,
       obstacles: this.obstacles.map((o) => ({ x: o.x, y: o.y, size: o.size })),
       target: this.target
         ? { x: this.target.x, y: this.target.y, size: this.target.size }
@@ -72,6 +76,8 @@ export class GameMap {
 
   static fromJSON(obj) {
     const gm = new GameMap(obj.cols, obj.rows, obj.cellSize, obj.margin);
+    if (typeof obj.startX === 'number') gm.startX = obj.startX;
+    if (typeof obj.startY === 'number') gm.startY = obj.startY;
     if (obj.obstacles) {
       gm.obstacles = obj.obstacles.map((o) => new Obstacle(o.x, o.y, o.size));
     }
