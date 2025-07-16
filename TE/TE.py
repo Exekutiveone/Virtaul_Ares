@@ -328,7 +328,9 @@ class Car:
 
 # === Environment ===========================================================
 """Action names used by the headless simulation environment."""
-ACTIONS = [
+
+# Basic driving commands
+DRIVE_ACTIONS = [
     "forward",
     "left",
     "right",
@@ -336,10 +338,15 @@ ACTIONS = [
     "stop",
 ]
 
-# Add camera actions for angles between -90 and 90 degrees.  The car model
-# itself ignores these actions but they are included to mirror the action space
-# of the RL environment.
-ACTIONS += [f"cam_{deg}" for deg in range(-90, 91)]
+# Camera angles
+CAMERA_ANGLES = list(range(-90, 91))
+
+# Cartesian product of driving and camera commands.  Camera angles are ignored
+# by the simulator but included so the action space mirrors that of the RL
+# environment.
+ACTIONS = [
+    (d, a) for d in DRIVE_ACTIONS for a in CAMERA_ANGLES
+]
 
 
 class SimEnv(Environment):
@@ -360,8 +367,10 @@ class SimEnv(Environment):
 
     # ------------------------------------------------------------------
     def send_action(self, action_index: int) -> None:
-        action = ACTIONS[action_index]
-        self.car.update(action)
+        drive, _angle = ACTIONS[action_index]
+        # The simulator does not model the second camera, so only the driving
+        # command influences the state.  The camera angle component is ignored.
+        self.car.update(drive)
         self._check_goal()
         if self.car.battery <= 0:
             self.done = True
