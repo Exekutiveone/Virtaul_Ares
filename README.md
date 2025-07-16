@@ -86,3 +86,10 @@ possible to edit and extend previously created command sequences.
 Sequences saved as CSV or ROS files can also be loaded. When imported, they are
 converted into simple action lists so they can be further adjusted and saved
 again, e.g. in JSON format for advanced features.
+
+## Reinforcement Learning
+
+The script `RL/train.py` trains a simple DQN agent that interacts with the
+server via the REST API. The model weights are stored in `RL/dqn_model.h5` after
+each episode so training can resume from the last run. When `train.py` is
+executed again the agent automatically loads this file if it exists.

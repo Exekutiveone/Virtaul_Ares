@@ -7,7 +7,7 @@ from utils import ACTIONS
 
 if __name__ == '__main__':
     env = ServerEnv(BASE_URL)
-    agent = DQNAgent()
+    agent = DQNAgent("dqn_model.h5")
     logger = Logger("rl_log.csv")
     for ep in range(NUM_EPISODES):
         state = env.reset()
@@ -25,4 +25,5 @@ if __name__ == '__main__':
             if done:
                 break
         agent.replay()
+        agent.save()
     logger.close()
