@@ -408,11 +408,17 @@ function updateSlamCoverage() {
     slamCanvas.height,
   ).data;
   let cleared = 0;
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] === 0) cleared++;
+  let total = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+    if (r === 0 && g === 0 && b === 0 && a === 255) continue;
+    total++;
+    if (a === 0) cleared++;
   }
-  const total = slamCanvas.width * slamCanvas.height;
-  const percent = (cleared / total) * 100;
+  const percent = total ? (cleared / total) * 100 : 0;
   slamCoverageEl.textContent = percent.toFixed(1) + '%';
   const pts = Math.floor(percent);
   if (pts !== coverageScore) {
