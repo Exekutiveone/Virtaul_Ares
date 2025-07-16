@@ -23,6 +23,12 @@ Training progress of the RL agent can be monitored at
 automatically so you can watch rewards and epsilon values update during
 training.
 
+### Saving the RL model
+
+The training script automatically stores the neural network under
+`RL/dqn_model.keras` after each episode. When you run `train.py` again, it will
+load this file if present so training can continue from the previous state.
+
 ## Battery model
 
 Each episode starts with a full battery. During simulation the battery level

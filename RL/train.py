@@ -13,8 +13,10 @@ else:
     from environment import ServerEnv as Env
     env = Env(BASE_URL)
 
+MODEL_FILE = Path(__file__).with_name("dqn_model.keras")
+
 if __name__ == '__main__':
-    agent = DQNAgent()
+    agent = DQNAgent(str(MODEL_FILE) if MODEL_FILE.exists() else None)
     log_path = Path(__file__).with_name("rl_log.csv")
     logger = Logger(str(log_path))
     for ep in range(NUM_EPISODES):
@@ -34,5 +36,6 @@ if __name__ == '__main__':
                 break
         agent.replay()
         logger.flush()
+        agent.save(str(MODEL_FILE))
         print(f"Episode {ep} finished after {st + 1} steps with reward {total:.2f}")
     logger.close()
