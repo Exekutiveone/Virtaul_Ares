@@ -23,7 +23,7 @@ function pushMapToServer(gameMap, name = 'map') {
 // 1 Pixel entspricht dieser Anzahl Zentimeter
 const CM_PER_PX = 2;
 const WAYPOINT_SIZE = 20 / CM_PER_PX;
-const TARGET_SIZE = 20;
+const TARGET_SIZE = WAYPOINT_SIZE;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -261,7 +261,7 @@ function refreshCarObjects() {
 }
 
 function respawnTarget() {
-  const size = targetMarker ? targetMarker.size : TARGET_SIZE;
+  const size = TARGET_SIZE;
   for (let i = 0; i < 100; i++) {
     const col = Math.floor(Math.random() * gameMap.cols);
     const row = Math.floor(Math.random() * gameMap.rows);
@@ -312,11 +312,9 @@ function updateObstacleOptions() {
   const size = parseInt(sizeInput.value);
   sizeInput.value = isNaN(size) ? 1 : Math.max(1, Math.min(25, size));
   previewSize =
-    typeSelect.value === 'target'
-      ? CELL_SIZE
-      : typeSelect.value === 'waypoint'
-        ? WAYPOINT_SIZE
-        : parseInt(sizeInput.value) * CELL_SIZE;
+    typeSelect.value === 'target' || typeSelect.value === 'waypoint'
+      ? WAYPOINT_SIZE
+      : parseInt(sizeInput.value) * CELL_SIZE;
 }
 
 function resizeCanvas() {
