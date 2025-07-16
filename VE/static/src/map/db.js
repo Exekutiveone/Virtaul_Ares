@@ -3,6 +3,8 @@ export function getCurrentMapData(gameMap) {
     cols: gameMap.cols,
     rows: gameMap.rows,
     cellSize: gameMap.cellSize,
+    startX: gameMap.startX,
+    startY: gameMap.startY,
     obstacles: gameMap.obstacles.map((o) => ({ x: o.x, y: o.y, size: o.size })),
     target: gameMap.target
       ? {
@@ -28,7 +30,6 @@ export function downloadMap(gameMap) {
   link.download = 'map.json';
   link.click();
 }
-
 
 export function loadMapFile(file) {
   return new Promise((resolve, reject) => {

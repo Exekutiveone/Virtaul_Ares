@@ -3,13 +3,25 @@ import { GameMap } from './map/map.js';
 import { Obstacle } from './map/Obstacle.js';
 import { Target } from './map/Target.js';
 import { Waypoint } from './map/Waypoint.js';
+import { SpawnPoint } from './map/SpawnPoint.js';
 import { generateBorder } from './map/mapGenerator.js';
 import { paintCell, addLine, connectCorners } from './mapEditorUtils.js';
-import { ensureMapList, setupControlModeSelect, setupSlamCheckbox } from './map/management.js';
+import {
+  ensureMapList,
+  setupControlModeSelect,
+  setupSlamCheckbox,
+} from './map/management.js';
 import * as db from './map/db.js';
 import { pollControl, sendTelemetry } from './api/telemetry.js';
-import { loadSequences, runSequence, getFormatFromFile } from './sequences/runner.js';
-import { centerOnCar as centerOnCarModule, autoFollowCar as autoFollowCarModule } from './cameraUtils.js';
+import {
+  loadSequences,
+  runSequence,
+  getFormatFromFile,
+} from './sequences/runner.js';
+import {
+  centerOnCar as centerOnCarModule,
+  autoFollowCar as autoFollowCarModule,
+} from './cameraUtils.js';
 
 function pushMapToServer(gameMap, name = 'map') {
   const data = gameMap.toJSON ? gameMap.toJSON() : gameMap;
@@ -79,9 +91,6 @@ let coverageScore = 0;
 let coverageInterval = null;
 let lastCrash = false;
 
-
-
-
 function updateScoreBoard() {
   if (scoreEl) scoreEl.textContent = score;
 }
@@ -114,8 +123,6 @@ async function initMapList() {
 // Immediately start loading the list of available maps.
 const mapListReady = initMapList();
 
-
-
 window.addEventListener('keydown', (e) => {
   if (controlMode !== 'wasd') return;
   const k = keyMap[e.key.toLowerCase()];
@@ -130,15 +137,9 @@ window.addEventListener('keyup', (e) => {
   const k = keyMap[e.key.toLowerCase()];
   if (k) {
     e.preventDefault();
-    car.keys[k]
+    car.keys[k];
   }
 });
-
-
-
-
-
-
 
 let zoomMode = false;
 let zoomScale = 1;
@@ -152,7 +153,6 @@ const TELEMETRY_INTERVAL = 500; // ms
 let lastTelemetry = 0;
 
 const CONTROL_POLL_INTERVAL = 200; // ms
-
 
 let CELL_SIZE = parseFloat(cellCmInput.value) / CM_PER_PX;
 const initialWidthCm = parseFloat(widthCmInput.value);
@@ -194,6 +194,9 @@ if (csvMapUrl) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
+    if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
+    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
     waypoints = gameMap.waypoints || [];
     cellCmInput.value = Math.round(gameMap.cellSize * CM_PER_PX);
     updateObstacleOptions();
@@ -217,6 +220,7 @@ let dragY = 0;
 let lastPaintX = 0;
 let lastPaintY = 0;
 let targetMarker = gameMap.target;
+let spawnMarker = null;
 let cornerPoints = [];
 
 function renumberCornerPoints() {
@@ -305,6 +309,7 @@ const car = new Car(ctx, carImage, 0.5, 0, obstacles, {
   hitboxHeight: HOTBOX_HEIGHT_CM / CM_PER_PX,
 });
 car.autopilot = controlMode === 'mouse';
+spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
 refreshCarObjects();
 
 function updateObstacleOptions() {
@@ -337,7 +342,6 @@ function updateTransform() {
   canvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
   slamCanvas.style.transform = `translate(${-translateX}px, ${-translateY}px) scale(${zoomScale})`;
 }
-
 
 window.addEventListener('resize', resizeCanvas);
 
@@ -374,9 +378,14 @@ function drawSlamHits() {
 function revealCar() {
   const bbox = car.getBoundingBox(car.posX, car.posY);
   if (prevCarRect) {
-   slamCtx.save();
+    slamCtx.save();
     slamCtx.globalCompositeOperation = 'destination-out';
-    slamCtx.fillRect(prevCarRect.x, prevCarRect.y, prevCarRect.w, prevCarRect.h);
+    slamCtx.fillRect(
+      prevCarRect.x,
+      prevCarRect.y,
+      prevCarRect.w,
+      prevCarRect.h,
+    );
     slamCtx.restore();
   }
   slamCtx.save();
@@ -389,7 +398,12 @@ function revealCar() {
 
 function updateSlamCoverage() {
   if (!slamMode || !slamCoverageEl) return;
-  const data = slamCtx.getImageData(0, 0, slamCanvas.width, slamCanvas.height).data;
+  const data = slamCtx.getImageData(
+    0,
+    0,
+    slamCanvas.width,
+    slamCanvas.height,
+  ).data;
   let cleared = 0;
   for (let i = 3; i < data.length; i += 4) {
     if (data[i] === 0) cleared++;
@@ -411,9 +425,6 @@ function updatePreview() {
 
 typeSelect.addEventListener('change', updatePreview);
 sizeInput.addEventListener('change', updatePreview);
-
-
-
 
 canvas.addEventListener('mousedown', (e) => {
   if (zoomMode) {
@@ -456,6 +467,19 @@ canvas.addEventListener('mouseup', () => {
       waypoints.push(new Waypoint(dragX, dragY, WAYPOINT_SIZE));
     }
     gameMap.waypoints = waypoints;
+  } else if (selected === 'start') {
+    if (removeCheckbox.checked) {
+      spawnMarker = null;
+      gameMap.startX = undefined;
+      gameMap.startY = undefined;
+    } else {
+      spawnMarker = new SpawnPoint(dragX, dragY, WAYPOINT_SIZE);
+      gameMap.startX = dragX;
+      gameMap.startY = dragY;
+      car.startX = dragX;
+      car.startY = dragY;
+      car.reset();
+    }
   } else if (selected === 'corner') {
     if (removeCheckbox.checked) {
       const idx = cornerPoints.findIndex((p) => p.x === dragX && p.y === dragY);
@@ -589,6 +613,9 @@ function loop() {
   if (targetMarker) {
     targetMarker.draw(ctx);
   }
+  if (spawnMarker) {
+    spawnMarker.draw(ctx);
+  }
   if (
     isDragging &&
     typeSelect.value === 'obstacle' &&
@@ -717,6 +744,9 @@ function loadMapFile(e) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
+    if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
+    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
     waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
@@ -737,6 +767,9 @@ function loadMapCsv(e) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
+    if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
+    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
     waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
@@ -760,6 +793,9 @@ function loadMapByIndex(idx) {
     CELL_SIZE = gameMap.cellSize;
     obstacles = gameMap.obstacles;
     targetMarker = gameMap.target;
+    if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
+    if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
+    spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
     waypoints = gameMap.waypoints || [];
     refreshCarObjects();
     widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
@@ -786,6 +822,9 @@ function resetMap() {
   CELL_SIZE = gameMap.cellSize;
   obstacles = gameMap.obstacles;
   targetMarker = gameMap.target;
+  if (typeof gameMap.startX === 'number') car.startX = gameMap.startX;
+  if (typeof gameMap.startY === 'number') car.startY = gameMap.startY;
+  spawnMarker = new SpawnPoint(car.startX, car.startY, WAYPOINT_SIZE);
   waypoints = gameMap.waypoints || [];
   refreshCarObjects();
   widthCmInput.value = gameMap.cols * gameMap.cellSize * CM_PER_PX;
@@ -862,6 +901,8 @@ if (editorMode) {
     const cols = Math.max(1, Math.round(wCm / cellCm));
     const rows = Math.max(1, Math.round(hCm / cellCm));
     gameMap = new GameMap(cols, rows, CELL_SIZE);
+    gameMap.startX = car.startX;
+    gameMap.startY = car.startY;
     obstacles = gameMap.obstacles;
     targetMarker = null;
     refreshCarObjects();
@@ -872,7 +913,6 @@ if (editorMode) {
     pushMapToServer(gameMap, 'map');
   });
 }
-
 
 toggleHitboxesBtn.addEventListener('click', () => {
   showHitboxes = !showHitboxes;

@@ -14,7 +14,10 @@ export function parseCsvMap(text) {
   const gm = new GameMap(cols, rows, cellSize, margin);
   for (let i = 1; i < lines.length; i++) {
     const parts = lines[i].split(',');
-    if (parts[0] === 'target') {
+    if (parts[0] === 'start') {
+      gm.startX = parseFloat(parts[1]);
+      gm.startY = parseFloat(parts[2]);
+    } else if (parts[0] === 'target') {
       gm.target = new Target(
         parseFloat(parts[1]),
         parseFloat(parts[2]),
@@ -45,14 +48,17 @@ export function serializeCsvMap(gameMap) {
   const lines = [
     [gameMap.cols, gameMap.rows, gameMap.cellSize, gameMap.margin].join(','),
   ];
+  if (
+    typeof gameMap.startX === 'number' &&
+    typeof gameMap.startY === 'number'
+  ) {
+    lines.push(['start', gameMap.startX, gameMap.startY].join(','));
+  }
   if (gameMap.target) {
     lines.push(
-      [
-        'target',
-        gameMap.target.x,
-        gameMap.target.y,
-        gameMap.target.size,
-      ].join(','),
+      ['target', gameMap.target.x, gameMap.target.y, gameMap.target.size].join(
+        ',',
+      ),
     );
   }
   for (const w of gameMap.waypoints) {
