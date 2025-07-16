@@ -247,7 +247,12 @@ class Car:
         dt = now - self.last_update
         self.last_update = now
 
-        if action in ("cam_left", "cam_center", "cam_right"):
+        # Ignore any camera control commands in the headless environment.  The
+        # simulator does not model a second camera, so these actions merely
+        # repeat the previously executed driving command.  Camera actions are
+        # encoded as ``cam_<angle>`` where ``<angle>`` is the desired camera
+        # rotation in degrees.
+        if action.startswith("cam_"):
             action = self._last_drive
         else:
             self._last_drive = action
@@ -322,16 +327,19 @@ class Car:
 
 
 # === Environment ===========================================================
+"""Action names used by the headless simulation environment."""
 ACTIONS = [
     "forward",
     "left",
     "right",
     "backward",
     "stop",
-    "cam_left",
-    "cam_center",
-    "cam_right",
 ]
+
+# Add camera actions for angles between -90 and 90 degrees.  The car model
+# itself ignores these actions but they are included to mirror the action space
+# of the RL environment.
+ACTIONS += [f"cam_{deg}" for deg in range(-90, 91)]
 
 
 class SimEnv(Environment):
