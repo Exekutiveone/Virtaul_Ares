@@ -5,9 +5,14 @@ from logger import Logger
 from pathlib import Path
 from utils import ACTIONS
 
-ENV_CHOICE = input("Select environment - [V]irtual or [T]est: ").strip().lower()
+ENV_CHOICE = input(
+    "Select environment - [V]irtual, [T]est or [B]oth: "
+).strip().lower()
 if ENV_CHOICE == "t":
     from remote_env import RemoteEnv as Env
+    env = Env()
+elif ENV_CHOICE == "b":
+    from dual_env import DualEnv as Env
     env = Env()
 else:
     from environment import ServerEnv as Env

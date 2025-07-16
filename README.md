@@ -23,6 +23,14 @@ Training progress of the RL agent can be monitored at
 automatically so you can watch rewards and epsilon values update during
 training.
 
+To start training run `python RL/train.py`. The script asks which
+environment to use:
+
+- `[V]`irtual – train directly against the browser based simulator.
+- `[T]`est – use the headless environment from `TE/TE.py`.
+- `[B]`oth – train in the test environment while mirroring the actions to
+  the virtual simulator for visualisation.
+
 ### Saving the RL model
 
 The training script automatically stores the neural network under
