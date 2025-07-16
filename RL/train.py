@@ -1,23 +1,45 @@
+"""Simple training loop for the reinforcement learning agent."""
+
+import argparse
+import os
 import numpy as np
+
 from config import BASE_URL, NUM_EPISODES, MAX_STEPS
 from agent import DQNAgent
 from logger import Logger
 from utils import ACTIONS
 
-ENV_CHOICE = input("Select environment - [V]irtual or [T]est: ").strip().lower()
-if ENV_CHOICE == "t":
-    from remote_env import RemoteEnv as Env
-    env = Env()
-else:
-    from environment import ServerEnv as Env
-    env = Env(BASE_URL)
 
-if __name__ == '__main__':
+def main() -> None:
+    """Run the training loop."""
+    parser = argparse.ArgumentParser(description="Train the DQN agent")
+    parser.add_argument(
+        "--env",
+        choices=["v", "t"],
+        default="v",
+        help="use the virtual (v) or test (t) environment",
+    )
+    parser.add_argument(
+        "--log",
+        default=os.path.join(os.path.dirname(__file__), "rl_log.csv"),
+        help="path to the training log",
+    )
+    args = parser.parse_args()
+
+    if args.env == "t":
+        from remote_env import RemoteEnv as Env
+
+        env = Env()
+    else:
+        from environment import ServerEnv as Env
+
+        env = Env(BASE_URL)
+
     agent = DQNAgent()
-    logger = Logger("rl_log.csv")
+    logger = Logger(args.log)
     for ep in range(NUM_EPISODES):
         state = env.reset()
-        total = 0
+        total = 0.0
         for st in range(MAX_STEPS):
             a = agent.act(np.array(state))
             env.send_action(a)
@@ -32,3 +54,7 @@ if __name__ == '__main__':
                 break
         agent.replay()
     logger.close()
+
+
+if __name__ == "__main__":
+    main()

@@ -8,7 +8,7 @@ Run the Flask application which serves both the HTML interface and the API
 endpoints:
 
 ```bash
-python server.py
+python VE/server.py
 ```
 
 Then open `http://127.0.0.1:5000/` in your browser. The server exposes the
@@ -99,4 +99,12 @@ again, e.g. in JSON format for advanced features.
 
 ## Reinforcement Learning tracker
 
-Run `python RL/gui.py` to open a simple Tkinter window that plots the accumulated reward per episode based on `RL/rl_log.csv`. The chart refreshes every second so you can monitor training progress live.
+Run `python RL/gui.py` to open a simple Tkinter window that plots the accumulated
+reward per episode based on `RL/rl_log.csv`. The chart refreshes every second so
+you can monitor training progress live. Use `--log` to specify an alternative
+CSV file.
+
+The training loop itself lives in `RL/train.py`. Select the environment via the
+`--env` option (`v` for the virtual Flask server from `VE/server.py` or `t` for
+the headless test environment in `TE/TE.py`) and optionally override the log
+location with `--log`.

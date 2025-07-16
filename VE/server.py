@@ -445,6 +445,20 @@ def slam_map():
     w = len(current_slam_map[0]) if h else 0
     return jsonify({'gridSize': {'width': w, 'height': h}, 'cells': current_slam_map})
 
-if __name__ == '__main__':
-    app.run(debug=True)
+def main() -> None:
+    """Run the simulation server."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Virtual environment server")
+    parser.add_argument(
+        "--port", type=int, default=5000, help="port to bind the web server"
+    )
+    parser.add_argument("--debug", action="store_true", help="enable debug mode")
+    args = parser.parse_args()
+
+    app.run(debug=args.debug, port=args.port)
+
+
+if __name__ == "__main__":
+    main()
 

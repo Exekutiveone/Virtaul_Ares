@@ -392,8 +392,14 @@ class SimEnv(Environment):
 
 # === Simple manual test ====================================================
 # === HTTP interface ========================================================
-if __name__ == "__main__":
+def main() -> None:
+    """Run the Flask based test environment."""
     from flask import Flask, request, jsonify
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Test environment server")
+    parser.add_argument("--port", type=int, default=6000, help="port to bind to")
+    args = parser.parse_args()
 
     app = Flask(__name__)
 
@@ -403,14 +409,14 @@ if __name__ == "__main__":
     @app.post("/reset")
     def reset():
         """Reset the simulation and return the initial state."""
-        global PREV_STATE
+        nonlocal PREV_STATE
         PREV_STATE = ENV.reset()
         return jsonify(state=PREV_STATE, reward=0.0, done=ENV.done)
 
     @app.post("/step")
     def step():
         """Apply an action index and advance the simulation."""
-        global PREV_STATE
+        nonlocal PREV_STATE
         idx = int(request.json.get("action", 0))
         print(f"Action received: {ACTIONS[idx]}")
         ENV.send_action(idx)
@@ -424,6 +430,10 @@ if __name__ == "__main__":
         """Return the current state without modifying the environment."""
         return jsonify(state=ENV.get_state(), done=ENV.done)
 
-    print("Test environment server running on http://127.0.0.1:6000")
-    app.run(port=6000)
+    print(f"Test environment server running on http://127.0.0.1:{args.port}")
+    app.run(port=args.port)
+
+
+if __name__ == "__main__":
+    main()
 
