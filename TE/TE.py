@@ -171,6 +171,7 @@ class Car:
         self.battery = 1.0
         self.crashed = False
         self.last_update = time.time()
+        self._last_drive = "stop"
 
     # ------------------------------------------------------------------
     def _bounding_box(self, x: float, y: float, rotation: Optional[float] = None) -> Tuple[float, float, float, float]:
@@ -246,8 +247,13 @@ class Car:
         dt = now - self.last_update
         self.last_update = now
 
+        if action in ("cam_left", "cam_center", "cam_right"):
+            action = self._last_drive
+        else:
+            self._last_drive = action
+
         # Acceleration handling
-        if action == "forward":
+        if action in ("forward", "left", "right"):
             self.acceleration = self.accel_rate
         elif action == "backward":
             self.acceleration = -self.accel_rate
@@ -316,7 +322,16 @@ class Car:
 
 
 # === Environment ===========================================================
-ACTIONS = ["forward", "left", "right", "backward", "stop"]
+ACTIONS = [
+    "forward",
+    "left",
+    "right",
+    "backward",
+    "stop",
+    "cam_left",
+    "cam_center",
+    "cam_right",
+]
 
 
 class SimEnv(Environment):

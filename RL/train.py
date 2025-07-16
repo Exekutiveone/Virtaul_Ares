@@ -1,12 +1,18 @@
 import numpy as np
 from config import BASE_URL, NUM_EPISODES, MAX_STEPS
-from environment import ServerEnv
 from agent import DQNAgent
 from logger import Logger
 from utils import ACTIONS
 
+ENV_CHOICE = input("Select environment - [V]irtual or [T]est: ").strip().lower()
+if ENV_CHOICE == "t":
+    from TE import SimEnv as Env
+    env = Env()
+else:
+    from environment import ServerEnv as Env
+    env = Env(BASE_URL)
+
 if __name__ == '__main__':
-    env = ServerEnv(BASE_URL)
     agent = DQNAgent()
     logger = Logger("rl_log.csv")
     for ep in range(NUM_EPISODES):
