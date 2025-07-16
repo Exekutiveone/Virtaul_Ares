@@ -322,7 +322,7 @@ ACTIONS = ["forward", "left", "right", "backward", "stop"]
 class SimEnv(Environment):
     """Headless simulator built on top of :class:`Car` and :class:`GameMap`."""
 
-    def __init__(self, map_file: str = "VE/static/maps/Level1.csv") -> None:
+    def __init__(self, map_file: str = "Virtaul_Ares\TE\Level1.csv") -> None:
         self.map = GameMap.from_csv(map_file)
         self.car = Car(self.map)
         self.done = False
