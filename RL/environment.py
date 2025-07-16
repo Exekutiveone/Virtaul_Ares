@@ -27,6 +27,8 @@ class ServerEnv:
                 json={"action": "restart"},
                 timeout=5,
             )
+            # clear any previous goal flags
+            requests.get(f"{self.base_url}/api/goal", timeout=5)
         except Exception:
             # If the restart request fails we still continue with a clean state
             pass
@@ -66,6 +68,13 @@ class ServerEnv:
             coverage = known / total if total else 0.0
         except Exception:
             coverage = 0.0
+        try:
+            goal_res = requests.get(f"{self.base_url}/api/goal", timeout=5)
+            if goal_res.json().get("reached"):
+                self.map_switched = True
+                self.done = True
+        except Exception:
+            pass
         # Mark the episode as finished if the target was reached or a crash
         # occurred. As we do not get explicit signals from the simulator we use
         # simple heuristics based on the sensor values.
@@ -93,7 +102,7 @@ class ServerEnv:
         reward = -5 if s2[0] < 20 else s[0] - s2[0]
         reward += cov_gain * 5
         if self.map_switched:
-            reward += 20
+            reward += 100
             self.map_switched = False
         if s2[6] >= 0.5 and not self.night_mode:
             self.night_mode = True

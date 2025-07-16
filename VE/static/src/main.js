@@ -621,7 +621,9 @@ function loop() {
       score += 100;
       updateScoreBoard();
       targetMarker = null;
-      nextMap();
+      fetch('/api/goal', { method: 'POST' }).catch((err) =>
+        console.error('goal notify failed', err),
+      );
     }
   }
   for (const wp of waypoints) {
