@@ -34,7 +34,11 @@ class DQNAgent:
     def replay(self, batch=32):
         samples = random.sample(self.memory, min(len(self.memory), batch))
         for s, a, r, s2, done in samples:
-            target = r if done else r + self.gamma * np.max(self.model.predict(s2[np.newaxis], verbose=0)[0])
+            s = np.asarray(s)
+            s2 = np.asarray(s2)
+            target = r if done else r + self.gamma * np.max(
+                self.model.predict(s2[np.newaxis], verbose=0)[0]
+            )
             q = self.model.predict(s[np.newaxis], verbose=0)
             q[0][a] = target
             self.model.fit(s[np.newaxis], q, epochs=1, verbose=0)
