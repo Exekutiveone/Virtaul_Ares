@@ -123,12 +123,16 @@ class ServerEnv:
         self.waypoint_hit = False
         action = ACTIONS[idx]
         payload = {"action": action}
-        if action == "cam_left":
-            payload = {"action": "camera2", "value": -45}
-        elif action == "cam_center":
-            payload = {"action": "camera2", "value": 0}
-        elif action == "cam_right":
-            payload = {"action": "camera2", "value": 45}
+
+        # Camera commands are encoded as "cam_<angle>" where <angle> is an
+        # integer between -90 and 90 degrees.  Forward them to the server using
+        # the ``camera2`` control action.
+        if action.startswith("cam_"):
+            try:
+                angle = int(action.split("_", 1)[1])
+            except (IndexError, ValueError):
+                angle = 0
+            payload = {"action": "camera2", "value": angle}
         try:
             requests.post(f"{self.base_url}/api/control", json=payload, timeout=5)
         except Exception:
