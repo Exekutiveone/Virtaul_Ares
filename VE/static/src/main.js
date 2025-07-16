@@ -624,6 +624,7 @@ function loop() {
       fetch('/api/goal', { method: 'POST' }).catch((err) =>
         console.error('goal notify failed', err),
       );
+      nextMap();
     }
   }
   for (const wp of waypoints) {
