@@ -57,7 +57,8 @@ class DualEnv:
     def get_map_name(self):
         """Return the name of the current map if available."""
         try:
-            self.map_name = self.display_env.get_map_name()
+            if getattr(self, "map_switched", False) or self.map_name == "unknown":
+                self.map_name = self.display_env.get_map_name()
         except Exception:
             pass
         return self.map_name

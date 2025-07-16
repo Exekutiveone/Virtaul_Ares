@@ -139,6 +139,8 @@ class ServerEnv:
 
     def get_map_name(self):
         """Return the most recently reported map name."""
+        if self.map_switched or self.map_name == "unknown":
+            self._update_map_name()
         return self.map_name
 
     def send_action(self, idx):
