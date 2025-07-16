@@ -1,4 +1,5 @@
-const BATTERY_RATE = 0.00002;
+// Battery drain per rpm-second (reduced for longer runtime)
+const BATTERY_RATE = 0.000005;
 
 export class Car {
   constructor(
@@ -501,6 +502,15 @@ export class Car {
   }
 
   update(canvasWidth, canvasHeight) {
+    if (this.battery <= 0) {
+      this.velocity = 0;
+      this.acceleration = 0;
+      this.angularVelocity = 0;
+      this.speed = 0;
+      this.rpm = 0;
+      this.draw(canvasWidth, canvasHeight);
+      return;
+    }
     if (this.fixedSpeed != null) {
       this.acceleration = 0;
       this.velocity = this.fixedSpeed / 60;
