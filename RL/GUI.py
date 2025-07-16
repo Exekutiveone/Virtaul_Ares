@@ -1,9 +1,11 @@
 import csv
 import os
 from flask import Flask, jsonify, render_template_string
+from config import MAX_STEPS
 
 app = Flask(__name__)
 LOG_PATH = os.path.join(os.path.dirname(__file__), 'rl_log.csv')
+MAP_NAME = os.environ.get('RL_MAP_NAME', 'unknown')
 
 HTML = """
 <!doctype html>
@@ -13,49 +15,29 @@ HTML = """
   <title>RL Training Data</title>
   <style>
     body {background:#111;color:#eee;font-family:Arial,sans-serif;margin:0;padding:20px;}
-    table {border-collapse: collapse;width:100%;margin-top:20px;}
-    th, td {border:1px solid #444;padding:4px;}
-    tr:nth-child(even) {background:#222;}
+    #progress {margin-bottom:20px;}
+    #progress progress {width:100%;}
   </style>
   <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
 </head>
 <body>
   <h1>RL Training Data</h1>
+  <div id='progress'>
+    <div id='mapName'></div>
+    <progress id='stepProgress' value='0' max='100'></progress>
+    <div id='stepText'></div>
+  </div>
   <canvas id='chart' width='800' height='400' style='background:#222;'></canvas>
-  <table id='log'>
-    <thead>
-      <tr>
-        <th>Episode</th>
-        <th>Step</th>
-        <th>Timestamp</th>
-        <th>Action</th>
-        <th>State</th>
-        <th>Reward</th>
-        <th>Done</th>
-        <th>Epsilon</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
 <script>
 let chart;
 async function loadData() {
   const res = await fetch('/api/log');
   const data = await res.json();
-  const tbody = document.querySelector('#log tbody');
-  tbody.innerHTML = '';
-  for (const row of data.entries) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${row.episode}</td>`+
-                   `<td>${row.step}</td>`+
-                   `<td>${row.timestamp}</td>`+
-                   `<td>${row.action}</td>`+
-                   `<td>${row.state}</td>`+
-                   `<td>${row.reward.toFixed(3)}</td>`+
-                   `<td>${row.done}</td>`+
-                   `<td>${row.epsilon.toFixed(3)}</td>`;
-    tbody.appendChild(tr);
-  }
+  document.getElementById('mapName').textContent = 'Map: ' + data.map;
+  document.getElementById('stepText').textContent = `Episode ${data.current_episode} - Schritt ${data.current_step}`;
+  const progress = document.getElementById('stepProgress');
+  progress.max = data.max_steps;
+  progress.value = data.current_step;
   const labels = data.episodes.map(e => e.episode);
   const rewards = data.episodes.map(e => e.reward);
   const eps = data.episodes.map(e => e.epsilon);
@@ -87,7 +69,7 @@ def parse_log():
     entries = []
     episodes = {}
     if not os.path.exists(LOG_PATH):
-        return entries, []
+        return entries, [], 0, 0
     with open(LOG_PATH, newline='') as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -106,8 +88,10 @@ def parse_log():
             episodes.setdefault(ep, {'reward': 0.0, 'epsilon': entry['epsilon']})
             episodes[ep]['reward'] += entry['reward']
             episodes[ep]['epsilon'] = entry['epsilon']
+    current_ep = entries[-1]['episode'] if entries else 0
+    current_step = entries[-1]['step'] if entries else 0
     ep_list = [{'episode': ep, 'reward': vals['reward'], 'epsilon': vals['epsilon']} for ep, vals in sorted(episodes.items())]
-    return entries, ep_list
+    return entries, ep_list, current_ep, current_step
 
 @app.route('/')
 def index():
@@ -115,8 +99,12 @@ def index():
 
 @app.route('/api/log')
 def api_log():
-    entries, ep_list = parse_log()
-    return jsonify({'entries': entries, 'episodes': ep_list})
+    _entries, ep_list, cur_ep, cur_step = parse_log()
+    return jsonify({'episodes': ep_list,
+                    'current_episode': cur_ep,
+                    'current_step': cur_step,
+                    'max_steps': MAX_STEPS,
+                    'map': MAP_NAME})
 
 if __name__ == '__main__':
     app.run(port=6000, debug=True)
