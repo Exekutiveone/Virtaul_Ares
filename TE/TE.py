@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import math
 import time
+import os
 from typing import List, Tuple, Optional
 
 
@@ -353,6 +354,8 @@ class SimEnv(Environment):
     """Headless simulator built on top of :class:`Car` and :class:`GameMap`."""
 
     def __init__(self, map_file: str = "Virtaul_Ares\TE\Level1.csv") -> None:
+        self.map_file = map_file
+        self.map_name = os.path.splitext(os.path.basename(map_file))[0]
         self.map = GameMap.from_csv(map_file)
         self.car = Car(self.map)
         self.done = False
@@ -451,6 +454,21 @@ if __name__ == "__main__":
     ENV = SimEnv()
     PREV_STATE = ENV.reset()
 
+    @app.post("/load_map")
+    def load_map():
+        """Load a new CSV map and reset the simulator."""
+        global ENV, PREV_STATE
+        data = request.get_json(force=True)
+        fname = data.get("file")
+        if not fname:
+            return jsonify({"error": "missing file"}), 400
+        path = os.path.join(os.path.dirname(__file__), fname)
+        if not os.path.exists(path):
+            return jsonify({"error": "not found"}), 404
+        ENV = SimEnv(path)
+        PREV_STATE = ENV.reset()
+        return jsonify(map_name=ENV.map_name)
+
     @app.post("/reset")
     def reset():
         """Reset the simulation and return the initial state."""
@@ -466,6 +484,7 @@ if __name__ == "__main__":
             coverage=ENV.coverage,
             coverage_done=ENV.coverage_done,
             stalled=ENV.stalled,
+            map_name=ENV.map_name,
         )
 
     @app.post("/step")
@@ -488,6 +507,7 @@ if __name__ == "__main__":
             coverage=ENV.coverage,
             coverage_done=ENV.coverage_done,
             stalled=ENV.stalled,
+            map_name=ENV.map_name,
         )
 
     @app.get("/state")
