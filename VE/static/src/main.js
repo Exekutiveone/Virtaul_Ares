@@ -639,6 +639,9 @@ function loop() {
       wp.active = false;
       score += 10;
       updateScoreBoard();
+      fetch('/api/waypoint', { method: 'POST' }).catch((err) =>
+        console.error('waypoint notify failed', err),
+      );
     }
   }
 

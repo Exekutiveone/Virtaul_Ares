@@ -19,6 +19,7 @@ current_map = None
 current_grid = None
 current_slam_map = None
 goal_reached = False
+waypoint_reached = False
 
 
 @app.route('/')
@@ -398,6 +399,18 @@ def goal():
         return '', 204
     reached = goal_reached
     goal_reached = False
+    return jsonify({'reached': reached})
+
+
+@app.route('/api/waypoint', methods=['GET', 'POST'])
+def waypoint():
+    """Flag indicating that a waypoint was reached."""
+    global waypoint_reached
+    if request.method == 'POST':
+        waypoint_reached = True
+        return '', 204
+    reached = waypoint_reached
+    waypoint_reached = False
     return jsonify({'reached': reached})
 
 
