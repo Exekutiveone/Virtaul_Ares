@@ -357,12 +357,23 @@ class SimEnv(Environment):
         self.car = Car(self.map)
         self.done = False
         self.goal_reached = False
+        self.stalled = False
+        self.coverage_done = False
+        self._visited: set[tuple[int, int]] = set()
+        self.coverage = 0.0
+        self._last_move = time.time()
 
     # ------------------------------------------------------------------
     def reset(self) -> List[float]:
         self.car.reset()
         self.done = False
         self.goal_reached = False
+        self.stalled = False
+        self.coverage_done = False
+        self._visited.clear()
+        self.coverage = 0.0
+        self._last_move = time.time()
+        self._update_coverage()
         return self.get_state()
 
     # ------------------------------------------------------------------
@@ -371,7 +382,18 @@ class SimEnv(Environment):
         # The simulator does not model the second camera, so only the driving
         # command influences the state.  The camera angle component is ignored.
         self.car.update(drive)
+        self._update_coverage()
+        if self.car.speed > 0:
+            self._last_move = time.time()
+        elif time.time() - self._last_move > 10:
+            self.stalled = True
+            self.done = True
         self._check_goal()
+        if self.car.crashed:
+            self.done = True
+        if self.coverage >= 0.95:
+            self.coverage_done = True
+            self.done = True
         if self.car.battery <= 0:
             self.done = True
 
@@ -385,7 +407,7 @@ class SimEnv(Environment):
             self.car.speed,
             self.car.gyro,
             self.car.rpm,
-            0.0,  # coverage placeholder
+            self.coverage,
             self.car.battery,
         ]
 
@@ -395,7 +417,19 @@ class SimEnv(Environment):
             return 100.0
         if self.car.crashed:
             return -10.0
+        if self.stalled:
+            return -5.0
+        if self.coverage_done:
+            return 10.0
         return -0.1
+
+    # ------------------------------------------------------------------
+    def _update_coverage(self) -> None:
+        cell_x = int(self.car.pos_x / self.map.cell_size)
+        cell_y = int(self.car.pos_y / self.map.cell_size)
+        self._visited.add((cell_x, cell_y))
+        total = self.map.cols * self.map.rows
+        self.coverage = len(self._visited) / total if total else 0.0
 
     # ------------------------------------------------------------------
     def _check_goal(self) -> None:
@@ -429,6 +463,9 @@ if __name__ == "__main__":
             goal_reached=ENV.goal_reached,
             crashed=ENV.car.crashed,
             battery=ENV.car.battery,
+            coverage=ENV.coverage,
+            coverage_done=ENV.coverage_done,
+            stalled=ENV.stalled,
         )
 
     @app.post("/step")
@@ -448,6 +485,9 @@ if __name__ == "__main__":
             goal_reached=ENV.goal_reached,
             crashed=ENV.car.crashed,
             battery=ENV.car.battery,
+            coverage=ENV.coverage,
+            coverage_done=ENV.coverage_done,
+            stalled=ENV.stalled,
         )
 
     @app.get("/state")

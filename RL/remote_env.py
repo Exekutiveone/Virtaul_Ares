@@ -12,6 +12,9 @@ class RemoteEnv:
         self.map_switched = False
         self.crashed = False
         self.battery = 1.0
+        self.coverage_done = False
+        self.stalled = False
+        self.coverage = 0.0
 
     def reset(self):
         res = requests.post(f"{self.base_url}/reset")
@@ -22,6 +25,9 @@ class RemoteEnv:
         self.map_switched = data.get("goal_reached", False)
         self.crashed = data.get("crashed", False)
         self.battery = data.get("battery", 1.0)
+        self.coverage = data.get("coverage", 0.0)
+        self.coverage_done = data.get("coverage_done", False)
+        self.stalled = data.get("stalled", False)
         return self.state
 
     def send_action(self, idx):
@@ -33,6 +39,9 @@ class RemoteEnv:
         self.map_switched = data.get("goal_reached", False)
         self.crashed = data.get("crashed", False)
         self.battery = data.get("battery", self.battery)
+        self.coverage = data.get("coverage", self.coverage)
+        self.coverage_done = data.get("coverage_done", False)
+        self.stalled = data.get("stalled", False)
 
     def get_state(self):
         return self.state

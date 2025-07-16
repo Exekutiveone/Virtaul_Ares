@@ -28,6 +28,11 @@ class DualEnv:
         except Exception:
             pass
         self.done = self.train_env.done
+        self.map_switched = getattr(self.train_env, "map_switched", False)
+        self.crashed = getattr(self.train_env, "crashed", False)
+        self.coverage_done = getattr(self.train_env, "coverage_done", False)
+        self.stalled = getattr(self.train_env, "stalled", False)
+        self.battery = getattr(self.train_env, "battery", 1.0)
         return state
 
     def send_action(self, idx):
@@ -37,6 +42,11 @@ class DualEnv:
             pass
         self.train_env.send_action(idx)
         self.done = self.train_env.done
+        self.map_switched = getattr(self.train_env, "map_switched", False)
+        self.crashed = getattr(self.train_env, "crashed", False)
+        self.coverage_done = getattr(self.train_env, "coverage_done", False)
+        self.stalled = getattr(self.train_env, "stalled", False)
+        self.battery = getattr(self.train_env, "battery", 1.0)
 
     def get_state(self):
         return self.train_env.get_state()
