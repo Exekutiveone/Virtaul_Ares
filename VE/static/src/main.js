@@ -876,6 +876,36 @@ toggleHitboxesBtn.addEventListener('click', () => {
     : 'Hitboxen anzeigen';
 });
 
+if (slamCheckbox) {
+  slamCheckbox.addEventListener('change', () => {
+    slamMode = slamCheckbox.checked;
+    if (slamMode) {
+      slamCanvas.width = canvas.width;
+      slamCanvas.height = canvas.height;
+      slamCanvas.style.display = 'block';
+      slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
+      slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
+      prevCarRect = null;
+      slamHits.length = 0;
+      revealCar();
+      if (coverageInterval) clearInterval(coverageInterval);
+      coverageInterval = setInterval(updateSlamCoverage, 1000);
+      coverageScore = 0;
+      updateScoreBoard();
+      updateSlamCoverage();
+    } else {
+      slamCanvas.style.display = 'none';
+      slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
+      prevCarRect = null;
+      slamHits.length = 0;
+      if (coverageInterval) clearInterval(coverageInterval);
+      if (slamCoverageEl) slamCoverageEl.textContent = '0%';
+      coverageScore = 0;
+      updateScoreBoard();
+    }
+  });
+}
+
 function centerOnCar(radiusCm = 500) {
   const res = centerOnCarModule(
     car,
