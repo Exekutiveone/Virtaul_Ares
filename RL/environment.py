@@ -2,6 +2,16 @@ import time
 import requests
 from utils import ACTIONS
 
+# Reward calculation constants
+STEP_PENALTY = -0.1          # small penalty each action
+STALL_PENALTY = -20          # heavy punishment for getting stuck
+ZERO_SPEED_PENALTY = -1      # discourage standing still
+COLLISION_DIST = 5           # distance considered a collision
+NEAR_DIST = 20               # threshold for being too close
+COLLISION_PENALTY = -20
+NEAR_PENALTY = -5
+GOAL_REWARD = 150
+
 class ServerEnv:
     def __init__(self, base_url):
         self.base_url = base_url.rstrip("/")
@@ -97,13 +107,29 @@ class ServerEnv:
         if self.stalled:
             self.stalled = False
             self.done = True
-            return -10
+            return STALL_PENALTY
+
         cov_gain = s2[6] - s[6]
-        reward = -5 if s2[0] < 20 else s[0] - s2[0]
-        reward += cov_gain * 5
+        reward = STEP_PENALTY + cov_gain * 5
+
+        # Penalize standing still
+        if s2[3] == 0:
+            reward += ZERO_SPEED_PENALTY
+
+        # Distances to obstacles
+        min_dist = min(s2[0], s2[1], s2[2])
+        if min_dist < COLLISION_DIST:
+            reward += COLLISION_PENALTY
+        elif min_dist < NEAR_DIST:
+            reward += NEAR_PENALTY
+        else:
+            reward += s[0] - s2[0]
+
         if self.map_switched:
-            reward += 100
+            reward += GOAL_REWARD
             self.map_switched = False
+
         if s2[6] >= 0.5 and not self.night_mode:
             self.night_mode = True
+
         return reward
