@@ -96,3 +96,7 @@ possible to edit and extend previously created command sequences.
 Sequences saved as CSV or ROS files can also be loaded. When imported, they are
 converted into simple action lists so they can be further adjusted and saved
 again, e.g. in JSON format for advanced features.
+
+## Reinforcement Learning tracker
+
+Run `python RL/gui.py` to open a simple Tkinter window that plots the accumulated reward per episode based on `RL/rl_log.csv`. The chart refreshes every second so you can monitor training progress live.
