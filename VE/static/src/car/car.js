@@ -35,7 +35,8 @@ export class Car {
     this.posY = startY;
     this.velocity = 0;
     this.acceleration = 0;
-    this.rotation = 0;
+    // Start rotated 180 degrees so the car faces the opposite direction
+    this.rotation = Math.PI;
     this.angularVelocity = 0;
 
     this.maxSpeed = 5;
@@ -45,7 +46,7 @@ export class Car {
     this.maxRpm = 5000;
     this.speed = 0;
     this.rpm = 0;
-    this.gyro = 0;
+    this.gyro = 180;
 
     this.autopilot = false;
     this.keys = {
@@ -103,12 +104,13 @@ export class Car {
     this.posY = this.startY;
     this.velocity = 0;
     this.acceleration = 0;
-    this.rotation = 0;
+    // Spawn facing the opposite direction
+    this.rotation = Math.PI;
     this.angularVelocity = 0;
     this.angularAcceleration = 0;
     this.speed = 0;
     this.rpm = 0;
-    this.gyro = 0;
+    this.gyro = 180;
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
     this.crashed = false;
   }
