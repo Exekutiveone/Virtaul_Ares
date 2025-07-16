@@ -1,3 +1,5 @@
+const BATTERY_RATE = 0.00002;
+
 export class Car {
   constructor(
     ctx,
@@ -47,6 +49,8 @@ export class Car {
     this.speed = 0;
     this.rpm = 0;
     this.gyro = 180;
+    this.battery = 1.0;
+    this.lastUpdate = Date.now();
 
     this.autopilot = false;
     this.keys = {
@@ -111,6 +115,8 @@ export class Car {
     this.speed = 0;
     this.rpm = 0;
     this.gyro = 180;
+    this.battery = 1.0;
+    this.lastUpdate = Date.now();
     for (const k of Object.keys(this.keys)) this.keys[k] = false;
     this.crashed = false;
   }
@@ -596,6 +602,11 @@ export class Car {
     this.speed = Math.abs(this.velocity * 60);
     this.rpm = Math.abs((this.velocity / this.maxSpeed) * this.maxRpm);
     this.gyro = ((((this.rotation * 180) / Math.PI) % 360) + 360) % 360;
+
+    const now = Date.now();
+    const dt = (now - this.lastUpdate) / 1000;
+    this.lastUpdate = now;
+    this.battery = Math.max(0, this.battery - this.rpm * dt * BATTERY_RATE);
 
     this.draw(canvasWidth, canvasHeight);
   }
