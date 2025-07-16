@@ -72,6 +72,9 @@ const keyMap = {
 };
 const redEl = document.getElementById('redLength');
 const greenEl = document.getElementById('greenLength');
+const green2El = document.getElementById('green2Length');
+const cam2Slider = document.getElementById('camera2Angle');
+const cam2SliderVal = document.getElementById('camera2AngleVal');
 const blueLeft1El = document.getElementById('blueLeft1');
 const blueLeft2El = document.getElementById('blueLeft2');
 const blueRight1El = document.getElementById('blueRight1');
@@ -675,6 +678,9 @@ function loop() {
 
   redEl.textContent = Math.round(car.redConeLength);
   greenEl.textContent = Math.round(car.greenConeLength);
+  const g2 = car.drawKegel(45, 40, 400, Math.PI + car.camera2Angle, 'green', 140);
+  car.greenCone2Length = g2;
+  if (green2El) green2El.textContent = Math.round(g2);
   const bl1 = car.drawKegel(65, 7, 150, -Math.PI / 2, 'blue', 8);
   const bl2 = car.drawKegel(72, 7, 150, -Math.PI / 2, 'blue', 8);
   const br1 = car.drawKegel(91, 7, 150, -Math.PI / 2, 'blue', 8);
@@ -684,6 +690,7 @@ function loop() {
     revealCar();
     revealCone(18, 40, 700, Math.PI, 6);
     revealCone(45, 40, 400, Math.PI, 140);
+    revealCone(45, 40, 400, Math.PI + car.camera2Angle, 140);
     for (const [x, y] of [
       [65, 7],
       [72, 7],
@@ -1001,5 +1008,12 @@ if (speedSlider) {
     const val = parseFloat(speedSlider.value);
     if (speedSliderVal) speedSliderVal.textContent = val;
     car.fixedSpeed = val > 0 ? val : null;
+  });
+}
+if (cam2Slider) {
+  cam2Slider.addEventListener('input', () => {
+    const val = parseFloat(cam2Slider.value);
+    if (cam2SliderVal) cam2SliderVal.textContent = val;
+    car.camera2Angle = (val * Math.PI) / 180;
   });
 }
