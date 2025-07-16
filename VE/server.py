@@ -18,6 +18,7 @@ latest_telemetry = None
 current_map = None
 current_grid = None
 current_slam_map = None
+goal_reached = False
 
 
 @app.route('/')
@@ -370,6 +371,18 @@ def car():
         return '', 204
     else:
         return jsonify(latest_telemetry or {})
+
+
+@app.route('/api/goal', methods=['GET', 'POST'])
+def goal():
+    """Flag indicating that the current map's target was reached."""
+    global goal_reached
+    if request.method == 'POST':
+        goal_reached = True
+        return '', 204
+    reached = goal_reached
+    goal_reached = False
+    return jsonify({'reached': reached})
 
 
 @app.route('/api/grid')
