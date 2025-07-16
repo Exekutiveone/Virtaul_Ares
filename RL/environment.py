@@ -119,24 +119,31 @@ class ServerEnv:
         return [front, left, right, speed, gyro, rpm, coverage, self.battery]
 
     def send_action(self, idx):
+        """Send a driving and camera command for the chosen action index."""
         self.map_switched = False
         self.waypoint_hit = False
-        action = ACTIONS[idx]
-        payload = {"action": action}
+        drive, angle = ACTIONS[idx]
 
-        # Camera commands are encoded as "cam_<angle>" where <angle> is an
-        # integer between -90 and 90 degrees.  Forward them to the server using
-        # the ``camera2`` control action.
-        if action.startswith("cam_"):
-            try:
-                angle = int(action.split("_", 1)[1])
-            except (IndexError, ValueError):
-                angle = 0
-            payload = {"action": "camera2", "value": angle}
+        # First send the driving command
         try:
-            requests.post(f"{self.base_url}/api/control", json=payload, timeout=5)
+            requests.post(
+                f"{self.base_url}/api/control",
+                json={"action": drive},
+                timeout=5,
+            )
         except Exception:
             pass
+
+        # Then adjust the camera orientation
+        try:
+            requests.post(
+                f"{self.base_url}/api/control",
+                json={"action": "camera2", "value": int(angle)},
+                timeout=5,
+            )
+        except Exception:
+            pass
+
         self.done = False
 
     def compute_reward(self, s, s2):

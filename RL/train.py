@@ -3,7 +3,7 @@ from config import BASE_URL, NUM_EPISODES, MAX_STEPS
 from agent import DQNAgent
 from logger import Logger
 from pathlib import Path
-from utils import ACTIONS
+from utils import ACTIONS, format_action
 
 ENV_CHOICE = input(
     "Select environment - [V]irtual, [T]est or [B]oth: "
@@ -34,7 +34,7 @@ if __name__ == '__main__':
             r = env.compute_reward(state, s2)
             done = env.done
             agent.remember(state, a, r, s2, done)
-            logger.log(ep, st, ACTIONS[a], state, r, done, agent.epsilon)
+            logger.log(ep, st, format_action(ACTIONS[a]), state, r, done, agent.epsilon)
             state = s2
             total += r
             if done:
