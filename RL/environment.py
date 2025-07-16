@@ -24,6 +24,8 @@ class ServerEnv:
         self.map_switched = False
         self.waypoint_hit = False
         self.stalled = False
+        self.crashed = False
+        self.coverage_done = False
         self.last_move_time = time.time()
         self.battery = 1.0
         self.last_state_time = time.time()
@@ -36,6 +38,8 @@ class ServerEnv:
         self.map_switched = False
         self.waypoint_hit = False
         self.stalled = False
+        self.crashed = False
+        self.coverage_done = False
         self.last_move_time = time.time()
         self.battery = 1.0
         self.last_state_time = time.time()
@@ -116,8 +120,10 @@ class ServerEnv:
         # occurred. As we do not get explicit signals from the simulator we use
         # simple heuristics based on the sensor values.
         if front <= 1:
+            self.crashed = True
             self.done = True
         if coverage >= 0.95:
+            self.coverage_done = True
             self.done = True
         return [front, left, right, speed, gyro, rpm, coverage, self.battery]
 
