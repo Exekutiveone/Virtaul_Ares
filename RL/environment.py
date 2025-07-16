@@ -12,6 +12,8 @@ COLLISION_PENALTY = -20
 NEAR_PENALTY = -5
 GOAL_REWARD = 150
 WAYPOINT_REWARD = 15
+BATTERY_RATE = 0.00002        # battery drain per rpm-second
+BATTERY_PENALTY = -50         # punishment when battery depleted before goal
 
 class ServerEnv:
     def __init__(self, base_url):
@@ -22,6 +24,8 @@ class ServerEnv:
         self.waypoint_hit = False
         self.stalled = False
         self.last_move_time = time.time()
+        self.battery = 1.0
+        self.last_state_time = time.time()
 
     def reset(self):
         """Restart the simulator and return the initial state."""
@@ -31,6 +35,8 @@ class ServerEnv:
         self.waypoint_hit = False
         self.stalled = False
         self.last_move_time = time.time()
+        self.battery = 1.0
+        self.last_state_time = time.time()
         try:
             # Trigger a restart of the simulator which resets the car to the
             # starting position. The front-end listens for this control command
@@ -64,6 +70,12 @@ class ServerEnv:
         speed = data.get("speed", 0)
         gyro = data.get("gyro", 0)
         rpm = data.get("rpm", 0)
+        now = time.time()
+        dt = now - self.last_state_time
+        self.last_state_time = now
+        self.battery = max(0.0, self.battery - rpm * dt * BATTERY_RATE)
+        if self.battery <= 0:
+            self.done = True
         if speed > 0:
             self.last_move_time = time.time()
         elif time.time() - self.last_move_time > 10:
@@ -73,7 +85,7 @@ class ServerEnv:
                 pass
             self.stalled = True
             self.done = True
-            return [front, left, right, 0, gyro, rpm, 0.0]
+            return [front, left, right, 0, gyro, rpm, 0.0, self.battery]
         try:
             slam_res = requests.get(f"{self.base_url}/api/slam-map", timeout=5)
             cells = slam_res.json().get("cells", [])
@@ -103,7 +115,7 @@ class ServerEnv:
             self.done = True
         if coverage >= 0.95:
             self.done = True
-        return [front, left, right, speed, gyro, rpm, coverage]
+        return [front, left, right, speed, gyro, rpm, coverage, self.battery]
 
     def send_action(self, idx):
         self.map_switched = False
@@ -154,5 +166,8 @@ class ServerEnv:
 
         if s2[6] >= 0.5 and not self.night_mode:
             self.night_mode = True
+
+        if s2[7] <= 0 and not self.map_switched:
+            reward += BATTERY_PENALTY
 
         return reward

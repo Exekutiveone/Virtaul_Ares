@@ -11,5 +11,5 @@ ACTIONS = [
     "cam_center",
     "cam_right",
 ]
-STATE_SIZE = 7
+STATE_SIZE = 8
 ACTION_SIZE = len(ACTIONS)

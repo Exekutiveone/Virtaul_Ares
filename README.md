@@ -19,6 +19,13 @@ following services:
 The map editor is available at `http://127.0.0.1:5000/map2`. A simple view of the
 API output can be found at `http://127.0.0.1:5000/status`.
 
+## Battery model
+
+Each episode starts with a full battery. During simulation the battery level
+decreases proportionally to the car's RPM and the elapsed time. The current
+battery percentage is included in the RL state. If it reaches 0&nbsp;% before the
+goal is achieved the agent receives an additional penalty and the episode ends.
+
 ## Saving and loading maps
 
 The control panel of `map2.html` contains buttons for working with maps. Maps
