@@ -5,7 +5,7 @@ export async function pollControl(car) {
     const res = await fetch(CONTROL_API_URL);
     if (!res.ok) return;
     const data = await res.json();
-    if (data.action) car.setKeysFromAction(data.action);
+    if (data.action) car.setKeysFromAction(data.action, data.value);
   } catch (err) {
     console.error('pollControl failed', err);
   }

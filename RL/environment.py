@@ -108,8 +108,15 @@ class ServerEnv:
         self.map_switched = False
         self.waypoint_hit = False
         action = ACTIONS[idx]
+        payload = {"action": action}
+        if action == "cam_left":
+            payload = {"action": "camera2", "value": -45}
+        elif action == "cam_center":
+            payload = {"action": "camera2", "value": 0}
+        elif action == "cam_right":
+            payload = {"action": "camera2", "value": 45}
         try:
-            requests.post(f"{self.base_url}/api/control", json={"action": action}, timeout=5)
+            requests.post(f"{self.base_url}/api/control", json=payload, timeout=5)
         except Exception:
             pass
         self.done = False
