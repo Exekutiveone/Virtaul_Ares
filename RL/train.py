@@ -31,4 +31,5 @@ if __name__ == '__main__':
             if done:
                 break
         agent.replay()
+        logger.flush()
     logger.close()

@@ -10,5 +10,9 @@ class Logger:
     def log(self, ep, st, act, state, rew, done, eps):
         self.writer.writerow([ep, st, datetime.now().isoformat(), act, state, rew, done, round(eps, 5)])
 
+    def flush(self):
+        """Ensure that all logged data is written to disk."""
+        self.file.flush()
+
     def close(self):
         self.file.close()
