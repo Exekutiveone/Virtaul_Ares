@@ -307,6 +307,22 @@ def update_csv_map(filename):
     return '', 204
 
 
+@app.route('/api/csv-maps/order', methods=['PUT'])
+def reorder_csv_maps():
+    data = request.get_json(force=True)
+    order = data.get('order')
+    if not isinstance(order, list):
+        return jsonify({'error': 'invalid order'}), 400
+    maps_list = load_csv_map_list()
+    file_to_entry = {m['file']: m for m in maps_list}
+    new_list = [file_to_entry[f] for f in order if f in file_to_entry]
+    for m in maps_list:
+        if m['file'] not in order:
+            new_list.append(m)
+    save_csv_map_list(new_list)
+    return '', 204
+
+
 @app.route('/api/maps', methods=['GET', 'POST'])
 def maps_route():
     if request.method == 'POST':
