@@ -1,5 +1,6 @@
 
 from flask import Flask, request, jsonify, render_template
+import csv
 from uuid import uuid4
 from datetime import datetime
 from werkzeug.utils import secure_filename
@@ -21,6 +22,8 @@ current_slam_map = None
 goal_reached = False
 waypoint_reached = False
 
+RL_LOG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'RL', 'rl_log.csv'))
+
 
 @app.route('/')
 def index():
@@ -39,6 +42,11 @@ def map2_page():
 @app.route('/status')
 def status_page():
     return render_template('status.html')
+
+
+@app.route('/rl-progress')
+def rl_progress_page():
+    return render_template('rl_progress.html')
 
 
 # CSV map storage
@@ -444,6 +452,28 @@ def slam_map():
     h = len(current_slam_map)
     w = len(current_slam_map[0]) if h else 0
     return jsonify({'gridSize': {'width': w, 'height': h}, 'cells': current_slam_map})
+
+
+@app.route('/api/rl-log')
+def rl_log():
+    if not os.path.exists(RL_LOG_PATH):
+        return jsonify([])
+    data = {}
+    with open(RL_LOG_PATH, newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            ep = int(row['episode'])
+            rew = float(row['reward'])
+            eps = float(row['epsilon'])
+            if ep not in data:
+                data[ep] = {'reward': 0.0, 'epsilon': eps}
+            data[ep]['reward'] += rew
+            data[ep]['epsilon'] = eps
+    result = [
+        {'episode': ep, 'reward': vals['reward'], 'epsilon': vals['epsilon']}
+        for ep, vals in sorted(data.items())
+    ]
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)

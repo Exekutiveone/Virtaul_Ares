@@ -18,6 +18,8 @@ following services:
 - `http://127.0.0.1:5000/api/grid` for the current occupancy grid.
 The map editor is available at `http://127.0.0.1:5000/map2`. A simple view of the
 API output can be found at `http://127.0.0.1:5000/status`.
+Training progress of the RL agent can be monitored at
+`http://127.0.0.1:5000/rl-progress`.
 
 ## Battery model
 
