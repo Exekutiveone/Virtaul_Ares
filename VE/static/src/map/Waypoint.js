@@ -4,6 +4,7 @@ export class Waypoint {
     this.y = y;
     this.size = size;
     this.active = true;
+    this.blocking = false;
   }
 
   draw(ctx) {

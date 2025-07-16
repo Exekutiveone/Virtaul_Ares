@@ -426,6 +426,58 @@ function updateSlamCoverage() {
   }
 }
 
+function sensorHits(obj, x, y, length, angle) {
+  x *= car.scale;
+  y *= car.scale;
+  length *= car.scale;
+  const cx = car.posX + car.imgWidth / 2;
+  const cy = car.posY + car.imgHeight / 2;
+  const dx = x - car.imgWidth / 2;
+  const dy = y - car.imgHeight / 2;
+  const rx = dx * Math.cos(car.rotation) - dy * Math.sin(car.rotation);
+  const ry = dx * Math.sin(car.rotation) + dy * Math.cos(car.rotation);
+  const fx = cx + rx;
+  const fy = cy + ry;
+  const finalAngle = angle + car.rotation;
+
+  const rect = { x: obj.x, y: obj.y, w: obj.size, h: obj.size };
+  const distObj = car.rayRectIntersection(fx, fy, finalAngle, rect);
+  if (distObj === Infinity || distObj > length) return false;
+
+  let minDist = length;
+  for (const o of car.objects) {
+    let d;
+    if (o.radius != null) {
+      d = car.rayCircleIntersectionDetail(fx, fy, finalAngle, o).dist;
+    } else {
+      const r = { x: o.x, y: o.y, w: o.w != null ? o.w : o.size, h: o.h != null ? o.h : o.size };
+      d = car.rayRectIntersection(fx, fy, finalAngle, r);
+    }
+    if (d < minDist) minDist = d;
+  }
+
+  return distObj <= minDist;
+}
+
+function anySensorHits(obj) {
+  const sensors = [
+    [18, 40, 700, Math.PI],
+    [45, 40, 400, Math.PI],
+    [45, 40, 400, Math.PI + car.camera2Angle],
+    [65, 7, 150, -Math.PI / 2],
+    [72, 7, 150, -Math.PI / 2],
+    [91, 7, 150, -Math.PI / 2],
+    [97, 7, 150, -Math.PI / 2],
+    [64, 74, 150, Math.PI / 2],
+    [71, 74, 150, Math.PI / 2],
+    [90, 74, 150, Math.PI / 2],
+    [97, 74, 150, Math.PI / 2],
+    [143, 37, 150, 0],
+    [143, 43, 150, 0],
+  ];
+  return sensors.some(([sx, sy, sl, sa]) => sensorHits(obj, sx, sy, sl, sa));
+}
+
 function updatePreview() {
   updateObstacleOptions();
 }
@@ -659,35 +711,17 @@ function loop() {
     lastCrash = false;
   }
   autoFollowCar();
-  const bboxCurrent = car.getBoundingBox(car.posX, car.posY);
-  if (targetMarker) {
-    if (
-      targetMarker.intersectsRect(
-        bboxCurrent.x,
-        bboxCurrent.y,
-        bboxCurrent.w,
-        bboxCurrent.h,
-      )
-    ) {
-      score += 100;
-      updateScoreBoard();
-      targetMarker = null;
-      fetch('/api/goal', { method: 'POST' }).catch((err) =>
-        console.error('goal notify failed', err),
-      );
-      nextMap();
-    }
+  if (targetMarker && anySensorHits(targetMarker)) {
+    score += 100;
+    updateScoreBoard();
+    targetMarker = null;
+    fetch('/api/goal', { method: 'POST' }).catch((err) =>
+      console.error('goal notify failed', err),
+    );
+    nextMap();
   }
   for (const wp of waypoints) {
-    if (
-      wp.active &&
-      wp.intersectsRect(
-        bboxCurrent.x,
-        bboxCurrent.y,
-        bboxCurrent.w,
-        bboxCurrent.h,
-      )
-    ) {
+    if (wp.active && anySensorHits(wp)) {
       wp.active = false;
       score += 10;
       updateScoreBoard();

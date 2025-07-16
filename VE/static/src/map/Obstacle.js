@@ -3,6 +3,7 @@ export class Obstacle {
     this.x = x;
     this.y = y;
     this.size = size;
+    this.blocking = true;
   }
 
   draw(ctx) {
