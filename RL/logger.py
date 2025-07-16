@@ -1,4 +1,5 @@
 import csv
+import os
 from datetime import datetime
 
 class Logger:
@@ -13,6 +14,7 @@ class Logger:
     def flush(self):
         """Ensure that all logged data is written to disk."""
         self.file.flush()
+        os.fsync(self.file.fileno())
 
     def close(self):
         self.file.close()
