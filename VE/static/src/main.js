@@ -207,6 +207,9 @@ if (csvMapUrl) {
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
     pushMapToServer(gameMap, currentCsvFile || 'map');
+    score = 0;
+    coverageScore = 0;
+    updateScoreBoard();
   });
 }
 let obstacles = gameMap.obstacles;
@@ -776,6 +779,7 @@ function loadMapFile(e) {
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
     pushMapToServer(gameMap, file.name || 'map');
+    score = 0;
     coverageScore = 0;
     updateScoreBoard();
   });
@@ -799,6 +803,7 @@ function loadMapCsv(e) {
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
     pushMapToServer(gameMap, file.name || 'map');
+    score = 0;
     coverageScore = 0;
     updateScoreBoard();
   });
@@ -825,6 +830,7 @@ function loadMapByIndex(idx) {
     heightCmInput.value = gameMap.rows * gameMap.cellSize * CM_PER_PX;
     resizeCanvas();
     pushMapToServer(gameMap, currentCsvFile || 'map');
+    score = 0;
     if (slamMode) {
       slamCtx.fillStyle = 'rgba(128,128,128,0.5)';
       slamCtx.fillRect(0, 0, slamCanvas.width, slamCanvas.height);
