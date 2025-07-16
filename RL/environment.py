@@ -77,8 +77,9 @@ class ServerEnv:
         try:
             slam_res = requests.get(f"{self.base_url}/api/slam-map", timeout=5)
             cells = slam_res.json().get("cells", [])
-            total = sum(len(row) for row in cells)
-            known = sum(1 for row in cells for val in row if val != 0)
+            non_obstacle = [val for row in cells for val in row if val != 2]
+            total = len(non_obstacle)
+            known = sum(1 for val in non_obstacle if val != 0)
             coverage = known / total if total else 0.0
         except Exception:
             coverage = 0.0
